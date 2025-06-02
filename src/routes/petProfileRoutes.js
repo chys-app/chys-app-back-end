@@ -3,7 +3,6 @@ const router = express.Router();
 const { createPetProfile, getPetProfile, updatePetProfile, deletePetProfile } = require('../controllers/petProfileController');
 const auth = require('../middleware/auth');
 
-// All routes are protected and require authentication
 router.post('/', auth, createPetProfile);
 router.get('/', auth, getPetProfile);
 router.patch('/', auth, updatePetProfile);

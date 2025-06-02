@@ -8,6 +8,7 @@ router.post('/register', register);
 router.post('/login', login);
 
 // Protected routes
-router.get('/profile', auth, getProfile);
+router.get('/profile', auth, getProfile); // Get own profile
+router.get('/profile/:userId', getProfile); // Get any user's profile
 
 module.exports = router; 

@@ -4,21 +4,21 @@ const jwt = require('jsonwebtoken');
 // Register new user
 const register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
     
     // Check if user already exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     // Create new user
-    const user = new User({ username, email, password });
+    const user = new User({ name, email, password });
     await user.save();
 
     // Generate token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
+      expiresIn: '30d'
     });
 
     res.status(201).json({ user, token });
@@ -46,7 +46,7 @@ const login = async (req, res) => {
 
     // Generate token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '7d'
+      expiresIn: '30d'
     });
 
     res.json({ user, token });
@@ -58,9 +58,19 @@ const login = async (req, res) => {
 // Get user profile
 const getProfile = async (req, res) => {
   try {
-    res.json(req.user);
+    const userId = req.params.userId || req.user._id;
+    
+    // Get user profile
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user
+    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
