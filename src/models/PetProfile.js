@@ -42,10 +42,10 @@ const petProfileSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  photos: [{
-    type: String,
-    maxlength: 5
-  }],
+  photos: {
+    type: [String],
+    validate: [val => val.length <= 5, 'Maximum of 5 photos allowed']
+  },
   color: {
     type: String,
     required: true,
