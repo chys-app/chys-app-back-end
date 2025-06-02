@@ -16,6 +16,10 @@ const options = {
       {
         url: 'http://localhost:5000',
         description: 'Development server'
+      },
+      {
+        url: 'https://pet-app-phi.vercel.app',
+        description: 'Production server'
       }
     ],
     components: {
@@ -31,7 +35,7 @@ const options = {
       bearerAuth: []
     }]
   },
-  apis: ['./src/routes/*.js', './src/models/*.js'], // Path to the API docs
+  apis: ['./src/routes/*.js', './src/models/*.js'],
 };
 
 const specs = swaggerJsdoc(options);
