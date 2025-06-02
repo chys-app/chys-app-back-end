@@ -14,12 +14,10 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:5000',
-        description: 'Development server'
-      },
-      {
-        url: 'https://pet-app-phi.vercel.app',
-        description: 'Production server'
+        url: process.env.NODE_ENV === 'production' 
+          ? 'https://pet-app-phi.vercel.app'
+          : 'http://localhost:5000',
+        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],
     components: {

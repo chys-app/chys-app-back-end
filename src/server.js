@@ -16,7 +16,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpecs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "Pet App API Documentation",
+  customfavIcon: "/favicon.ico"
+}));
 
 app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
@@ -35,7 +41,7 @@ const startServer = async () => {
   try {
     const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
-      console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+      console.log(`API Documentation available at ${process.env.NODE_ENV === 'production' ? 'https://pet-app-phi.vercel.app/api-docs' : `http://localhost:${PORT}/api-docs`}`);
     });
 
     await connectDB();
