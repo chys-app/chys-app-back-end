@@ -3,7 +3,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
 const petProfileRoutes = require('./routes/petProfileRoutes');
-const swaggerRoutes = require('./routes/swaggerRoutes');
 const { connectDB } = require('./config/database');
 
 dotenv.config();
@@ -15,7 +14,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api-docs', swaggerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
 
@@ -33,7 +31,6 @@ const startServer = async () => {
   try {
     const server = app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
-      console.log(`API Documentation available at ${process.env.NODE_ENV === 'production' ? 'https://pet-app-phi.vercel.app/api-docs' : `http://localhost:${PORT}/api-docs`}`);
     });
 
     await connectDB();
