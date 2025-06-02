@@ -1,0 +1,117 @@
+const mongoose = require('mongoose');
+
+const petProfileSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  isHavePet: {
+    type: Boolean,
+    default: false
+  },
+  petType: {
+    type: String,
+    enum: ['cat', 'dog'],
+    required: true
+  },
+  profilePic: {
+    type: String,
+    default: ''
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  breed: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  sex: {
+    type: String,
+    enum: ['male', 'female'],
+    required: true
+  },
+  dateOfBirth: {
+    type: Date,
+    required: true
+  },
+  bio: {
+    type: String,
+    trim: true
+  },
+  photos: [{
+    type: String,
+    maxlength: 5
+  }],
+  color: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  size: {
+    type: String,
+    enum: ['small', 'medium', 'large'],
+    required: true
+  },
+  weight: {
+    type: Number,
+    required: true
+  },
+  marks: {
+    type: String,
+    trim: true
+  },
+  microchipNumber: {
+    type: String,
+    trim: true
+  },
+  tagId: {
+    type: String,
+    trim: true
+  },
+  lostStatus: {
+    type: Boolean,
+    default: false
+  },
+  vaccinationStatus: {
+    type: Boolean,
+    default: false
+  },
+  vetName: {
+    type: String,
+    trim: true
+  },
+  vetContactNumber: {
+    type: String,
+    trim: true
+  },
+  personalityTraits: [{
+    type: String,
+    trim: true
+  }],
+  allergies: [{
+    type: String,
+    trim: true
+  }],
+  specialNeeds: {
+    type: String,
+    trim: true
+  },
+  feedingInstructions: {
+    type: String,
+    trim: true
+  },
+  dailyRoutine: {
+    type: String,
+    trim: true
+  }
+}, {
+  timestamps: true
+});
+
+petProfileSchema.index({ user: 1 });
+
+module.exports = mongoose.model('PetProfile', petProfileSchema); 
