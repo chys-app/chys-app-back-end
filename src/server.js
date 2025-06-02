@@ -7,7 +7,7 @@ const { connectDB } = require('./config/database');
 dotenv.config();
 
 const app = express();
-
+//coming from the frontend
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
