@@ -1,29 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpecs = require('./config/swagger');
 const userRoutes = require('./routes/userRoutes');
 const petProfileRoutes = require('./routes/petProfileRoutes');
+const swaggerRoutes = require('./routes/swaggerRoutes');
 const { connectDB } = require('./config/database');
 
 dotenv.config();
 
 const app = express();
-//coming from the frontend
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', swaggerUi.setup(swaggerSpecs, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "Pet App API Documentation",
-  customfavIcon: "/favicon.ico"
-}));
-
+// Routes
+app.use('/api-docs', swaggerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
 
