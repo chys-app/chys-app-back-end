@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const userRoutes = require('./routes/userRoutes');
 const petProfileRoutes = require('./routes/petProfileRoutes');
+const postRoutes = require('./routes/postRoutes');
 const { connectDB } = require('./config/database');
 
 dotenv.config();
@@ -16,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
+app.use('/api/posts', postRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Pet App API' });
