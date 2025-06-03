@@ -1,27 +1,61 @@
 const Post = require('../models/Post');
+const { cloudinary } = require('../config/cloudinary');
 
 // Create a new post
 const createPost = async (req, res) => {
-    try {
-      const { description, media, tags, location } = req.body;
-  
-      const post = new Post({
-        description,
-        media,
-        creator: req.user._id,
-        ...(tags && { tags }),         // Only include if tags are provided
-        ...(location && { location })  // Only include if location is provided
+  try {
+    const { description, tags, location } = req.body;
+    
+    // Handle media uploads
+    const media = [];
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        media.push(file.path);
       });
-  
-      await post.save();
-      await post.populate('creator', 'username profilePicture');
-  
-      res.status(201).json(post);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
     }
-  };
-  
+
+    if (media.length === 0) {
+      return res.status(400).json({ message: 'At least one media file is required' });
+    }
+
+    // Parse tags if they exist and are in string format
+    let parsedTags = [];
+    if (tags) {
+      try {
+        parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      } catch (error) {
+        parsedTags = tags.split(',').map(tag => tag.trim());
+      }
+    }
+
+    const post = new Post({
+      description: description.trim(),
+      media,
+      creator: req.user._id,
+      ...(parsedTags.length > 0 && { tags: parsedTags }),
+      ...(location && { location: location.trim() })
+    });
+
+    await post.save();
+    
+    // Populate all necessary fields
+    await post.populate([
+      { path: 'creator', select: 'username profilePicture' },
+      { path: 'likes', select: 'username profilePicture' },
+      { path: 'comments.user', select: 'username profilePicture' }
+    ]);
+
+    res.status(201).json(post);
+  } catch (error) {
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const publicId = file.path.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      }
+    }
+    res.status(400).json({ message: error.message });
+  }
+};
 
 // Get all posts with pagination and filtering
 const getAllPosts = async (req, res) => {
@@ -43,8 +77,11 @@ const getAllPosts = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('creator', 'username profilePicture')
-      .populate('likes', 'username profilePicture')
+      .populate([
+        { path: 'creator', select: 'username profilePicture' },
+        { path: 'likes', select: 'username profilePicture' },
+        { path: 'comments.user', select: 'username profilePicture' }
+      ])
       .lean();
 
     const total = await Post.countDocuments(query);
@@ -64,9 +101,11 @@ const getAllPosts = async (req, res) => {
 const getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('creator', 'username profilePicture')
-      .populate('likes', 'username profilePicture')
-      .populate('comments.user', 'username profilePicture');
+      .populate([
+        { path: 'creator', select: 'username profilePicture' },
+        { path: 'likes', select: 'username profilePicture' },
+        { path: 'comments.user', select: 'username profilePicture' }
+      ]);
 
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
@@ -85,7 +124,7 @@ const getPostById = async (req, res) => {
 const updatePost = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['description', 'media', 'tags', 'location'];
+    const allowedUpdates = ['description', 'tags', 'location'];
     const isValidOperation = updates.every(update => allowedUpdates.includes(update));
 
     if (!isValidOperation) {
@@ -98,11 +137,58 @@ const updatePost = async (req, res) => {
       return res.status(404).json({ message: 'Post not found or unauthorized' });
     }
 
-    updates.forEach(update => post[update] = req.body[update]);
+    // Handle media updates if new files are uploaded
+    if (req.files && req.files.length > 0) {
+      // Delete old media files from Cloudinary
+      for (const mediaUrl of post.media) {
+        try {
+          const publicId = mediaUrl.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error('Error deleting old media:', error);
+        }
+      }
+
+      // Add new media files
+      post.media = req.files.map(file => file.path);
+    }
+
+    // Update other fields
+    updates.forEach(update => {
+      if (update === 'tags') {
+        try {
+          post[update] = typeof req.body[update] === 'string' 
+            ? JSON.parse(req.body[update]) 
+            : req.body[update];
+        } catch (error) {
+          post[update] = req.body[update].split(',').map(tag => tag.trim());
+        }
+      } else {
+        post[update] = req.body[update].trim();
+      }
+    });
+
     await post.save();
+    
+    // Populate all necessary fields
+    await post.populate([
+      { path: 'creator', select: 'username profilePicture' },
+      { path: 'likes', select: 'username profilePicture' },
+      { path: 'comments.user', select: 'username profilePicture' }
+    ]);
 
     res.json(post);
   } catch (error) {
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        try {
+          const publicId = file.path.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error('Error cleaning up uploaded files:', error);
+        }
+      }
+    }
     res.status(400).json({ message: error.message });
   }
 };
@@ -143,6 +229,14 @@ const toggleLike = async (req, res) => {
     }
 
     await post.save();
+    
+    // Populate all necessary fields
+    await post.populate([
+      { path: 'creator', select: 'username profilePicture' },
+      { path: 'likes', select: 'username profilePicture' },
+      { path: 'comments.user', select: 'username profilePicture' }
+    ]);
+
     res.json(post);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -170,7 +264,13 @@ const addComment = async (req, res) => {
     });
 
     await post.save();
-    await post.populate('comments.user', 'username profilePicture');
+    
+    // Populate all necessary fields
+    await post.populate([
+      { path: 'creator', select: 'username profilePicture' },
+      { path: 'likes', select: 'username profilePicture' },
+      { path: 'comments.user', select: 'username profilePicture' }
+    ]);
     
     res.json(post);
   } catch (error) {
@@ -192,8 +292,11 @@ const getUserPosts = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('creator', 'username profilePicture')
-      .populate('likes', 'username profilePicture')
+      .populate([
+        { path: 'creator', select: 'username profilePicture' },
+        { path: 'likes', select: 'username profilePicture' },
+        { path: 'comments.user', select: 'username profilePicture' }
+      ])
       .lean();
 
     const total = await Post.countDocuments({ 

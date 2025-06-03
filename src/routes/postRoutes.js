@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { uploadMultiple, handleUploadError } = require('../middleware/fileUpload');
 const {
   createPost,
   getAllPosts,
@@ -13,16 +14,16 @@ const {
 } = require('../controllers/postController');
 
 // Create a new post
-router.post('/', auth, createPost);
+router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
 
 // Get all posts with pagination and filtering
-router.get('/', auth , getAllPosts);
+router.get('/', auth, getAllPosts);
 
 // Get a single post by ID
-router.get('/:id', auth ,getPostById);
+router.get('/:id', auth, getPostById);
 
 // Update a post
-router.patch('/:id', auth, updatePost);
+router.patch('/:id', auth, uploadMultiple('media', 5), handleUploadError, updatePost);
 
 // Delete a post (soft delete)
 router.delete('/:id', auth, deletePost);
