@@ -12,7 +12,6 @@ const petProfileSchema = new mongoose.Schema({
   },
   petType: {
     type: String,
-    enum: ['cat', 'dog'],
     required: true
   },
   profilePic: {
@@ -53,7 +52,6 @@ const petProfileSchema = new mongoose.Schema({
   },
   size: {
     type: String,
-    enum: ['small', 'medium', 'large'],
     required: true
   },
   weight: {

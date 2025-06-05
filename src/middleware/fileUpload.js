@@ -6,6 +6,10 @@ const uploadSingle = (fieldName) => {
   return upload.single(fieldName);
 };
 
+const uploadFields = (fields) => {
+  return upload.fields(fields);
+};
+
 // Middleware for multiple files upload
 const uploadMultiple = (fieldName, maxCount = 5) => {
   return upload.array(fieldName, maxCount);
@@ -43,8 +47,10 @@ const handleUploadError = (err, req, res, next) => {
   next(err);
 };
 
+
 module.exports = {
   uploadSingle,
   uploadMultiple,
+  uploadFields,
   handleUploadError
-}; 
+};

@@ -29,16 +29,16 @@ const createPetProfile = async (req, res) => {
       dailyRoutine
     } = req.body;
 
-    // Handle profile picture upload
+    // Handle profile picture
     let profilePic = '';
-    if (req.files && req.files.length > 0) {
-      profilePic = req.files[0].path;
+    if (req.files && req.files.profilePic && req.files.profilePic.length > 0) {
+      profilePic = req.files.profilePic[0].path;
     }
 
-    // Handle additional photos upload
+    // Handle additional photos
     const photos = [];
-    if (req.files && req.files.length > 1) {
-      req.files.slice(1).forEach(file => {
+    if (req.files && req.files.photos && req.files.photos.length > 0) {
+      req.files.photos.forEach(file => {
         photos.push(file.path);
       });
     }
@@ -74,9 +74,11 @@ const createPetProfile = async (req, res) => {
     await petProfile.save();
     res.status(201).json(petProfile);
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // Get pet profile
 const getPetProfile = async (req, res) => {
