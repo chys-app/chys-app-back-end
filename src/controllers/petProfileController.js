@@ -4,6 +4,10 @@ const { cloudinary } = require('../config/cloudinary');
 // Create pet profile
 const createPetProfile = async (req, res) => {
   try {
+    console.log('Received request to create pet profile');
+    console.log('Request body:', req.body);
+    console.log('Request files:', req.files);
+
     const {
       isHavePet,
       petType,
@@ -33,6 +37,7 @@ const createPetProfile = async (req, res) => {
     let profilePic = '';
     if (req.files && req.files.profilePic && req.files.profilePic.length > 0) {
       profilePic = req.files.profilePic[0].path;
+      console.log('Profile picture path:', profilePic);
     }
 
     // Handle additional photos
@@ -41,7 +46,14 @@ const createPetProfile = async (req, res) => {
       req.files.photos.forEach(file => {
         photos.push(file.path);
       });
+      console.log('Additional photo paths:', photos);
     }
+
+    const parsedPersonalityTraits = personalityTraits ? JSON.parse(personalityTraits) : [];
+    const parsedAllergies = allergies ? JSON.parse(allergies) : [];
+
+    console.log('Parsed personalityTraits:', parsedPersonalityTraits);
+    console.log('Parsed allergies:', parsedAllergies);
 
     const petProfile = new PetProfile({
       user: req.user._id,
@@ -64,20 +76,24 @@ const createPetProfile = async (req, res) => {
       vaccinationStatus,
       vetName,
       vetContactNumber,
-      personalityTraits: personalityTraits ? JSON.parse(personalityTraits) : [],
-      allergies: allergies ? JSON.parse(allergies) : [],
+      personalityTraits: parsedPersonalityTraits,
+      allergies: parsedAllergies,
       specialNeeds,
       feedingInstructions,
       dailyRoutine
     });
 
+    console.log('Saving pet profile to database...');
     await petProfile.save();
+    console.log('Pet profile saved successfully:', petProfile);
+
     res.status(201).json(petProfile);
   } catch (error) {
-    console.error(error);
+    console.error('Error while creating pet profile:', error);
     res.status(400).json({ message: error.message });
   }
 };
+
 
 
 // Get pet profile
