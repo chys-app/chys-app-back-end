@@ -18,6 +18,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  lat:{
+    type: Number
+  },
+  lng:{
+    type: Number
+  },
   address: {
     type: String,
     trim: true
