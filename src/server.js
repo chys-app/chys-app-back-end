@@ -29,7 +29,7 @@ app.get('/', (req, res) => {
 // ✅ GitHub Webhook Route
 app.post('/webhook', (req, res) => {
   console.log('✅ Webhook received from GitHub');
-
+//checking
   // Run deploy.sh in background so this process doesn't get killed
   exec('setsid bash ~/deploy.sh > ~/deploy.log 2>&1 &');
 
