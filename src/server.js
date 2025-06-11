@@ -21,7 +21,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
 app.use('/api/posts', postRoutes);
 
-// Health check// testing webhook
+// Health check
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Pet App API' });
 });
