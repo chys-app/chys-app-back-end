@@ -29,16 +29,13 @@ app.get('/', (req, res) => {
 // ✅ GitHub Webhook Route
 app.post('/webhook', (req, res) => {
   console.log('✅ Webhook received from GitHub');
-  exec('bash ~/deploy.sh', (err, stdout, stderr) => {
-    if (err) {
-      console.error('❌ Deployment failed:', err);
-      return res.status(500).send('Deployment failed');
-    }
 
-    console.log('✅ Deployment output:', stdout);
-    res.send('Deployment triggered');
-  });
+  // Run deploy.sh in background so this process doesn't get killed
+  exec('setsid bash ~/deploy.sh > ~/deploy.log 2>&1 &');
+
+  res.send('Deployment triggered');
 });
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
