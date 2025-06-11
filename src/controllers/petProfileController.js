@@ -1,5 +1,6 @@
 const PetProfile = require('../models/PetProfile');
 const { cloudinary } = require('../config/cloudinary');
+const User = require('../models/User');
 
 // Create pet profile
 const createPetProfile = async (req, res) => {
