@@ -18,11 +18,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  lat:{
+  lat: {
     type: Number
   },
-  lng:{
+  lng: {
     type: Number
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [lng, lat]
+      default: undefined
+    }
   },
   address: {
     type: String,
@@ -49,14 +60,31 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Index for Geo queries
+userSchema.index({ location: '2dsphere' });
+
+// Password hashing before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+
+  // Update location if lat/lng are modified
+  if (this.isModified('lat') || this.isModified('lng')) {
+    if (this.lat != null && this.lng != null) {
+      this.location = {
+        type: 'Point',
+        coordinates: [this.lng, this.lat]
+      };
+    }
+  }
+
   next();
 });
 
+// Compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema); 
+module.exports = mongoose.model('User', userSchema);

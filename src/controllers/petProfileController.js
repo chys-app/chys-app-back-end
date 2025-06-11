@@ -187,9 +187,55 @@ const deletePetProfile = async (req, res) => {
   }
 };
 
+
+const getNearbyPets = async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ message: 'Latitude and longitude are required' });
+    }
+
+    const users = await User.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: 50000 // 50 km in meters
+        }
+      }
+    }).select('_id');
+
+    const userIds = users.map(u => u._id);
+
+    const pets = await PetProfile.find({ user: { $in: userIds } }).populate('user', 'name email location');
+
+    res.status(200).json({ pets });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const getPetById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pet = await PetProfile.findById(id).populate('user', 'name email location');
+    if (!pet) return res.status(404).json({ message: 'Pet not found' });
+
+    res.status(200).json({ pet });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createPetProfile,
   getPetProfile,
   updatePetProfile,
-  deletePetProfile
+  deletePetProfile,
+  getNearbyPets,
+  getPetById
 }; 

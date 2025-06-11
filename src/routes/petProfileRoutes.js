@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createPetProfile, getPetProfile, updatePetProfile, deletePetProfile } = require('../controllers/petProfileController');
+const { createPetProfile, getPetProfile, updatePetProfile, deletePetProfile, getNearbyPets, getPetById } = require('../controllers/petProfileController');
 const auth = require('../middleware/auth');
 const { uploadMultiple, handleUploadError } = require('../middleware/fileUpload');
 const { upload } = require('../config/cloudinary');
@@ -19,5 +19,9 @@ router.get('/', getPetProfile);
 router.put('/', uploadMultiple('images', 5), handleUploadError, updatePetProfile);
 
 router.delete('/', deletePetProfile);
+
+router.get('/nearby-pets', getNearbyPets)
+
+router.get('/:id', getPetById)
 
 module.exports = router; 
