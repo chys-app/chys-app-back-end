@@ -6,6 +6,7 @@ const userRoutes = require('./routes/userRoutes');
 const petProfileRoutes = require('./routes/petProfileRoutes');
 const postRoutes = require('./routes/postRoutes');
 const { connectDB, disconnectDB } = require('./config/database');
+const logger = require('./config/logger');
 
 dotenv.config();
 
@@ -15,6 +16,12 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Request logging middleware
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.url}`);
+  next();
+});
 
 // Routes
 app.use('/api/users', userRoutes);
@@ -28,18 +35,15 @@ app.get('/', (req, res) => {
 
 // ✅ GitHub Webhook Route
 app.post('/webhook', (req, res) => {
-  console.log('✅ Webhook received from GitHub');
-//checking
+  logger.info('Webhook received from GitHub');
   // Run deploy.sh in background so this process doesn't get killed
   exec('setsid bash ~/deploy.sh > ~/deploy.log 2>&1 &');
-
   res.send('Deployment triggered');
 });
 
-//testing again
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  logger.error('Error occurred:', { error: err.message, stack: err.stack });
   res.status(500).json({
     message: 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -50,24 +54,25 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+      logger.info(`Server is running on port ${PORT}`);
     });
 
     await connectDB();
+    logger.info('Database connected successfully');
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('Failed to start server:', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 };
 
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
+  logger.info('SIGTERM received. Shutting down gracefully...');
   await disconnectDB();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('SIGINT received. Shutting down gracefully...');
+  logger.info('SIGINT received. Shutting down gracefully...');
   await disconnectDB();
   process.exit(0);
 });
