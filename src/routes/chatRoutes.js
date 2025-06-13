@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Message = require('../models/Message');
-const auth = require('../middleware/auth')
+const auth = require('../middleware/auth');
+const User = require('../models/User');
 
 // Get messages between the authenticated user and another user
 router.get('/:receiverId', auth, async (req, res) => {
@@ -20,7 +21,7 @@ router.get('/:receiverId', auth, async (req, res) => {
   }
 });
 
-router.get('/users', auth, async (req, res) => {
+router.get('/get/users', auth, async (req, res) => {
     try {
       const userId = req.user._id;
   
