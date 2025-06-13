@@ -5,6 +5,7 @@ const User = require('../models/User');
 const connectedUsers = new Map(); // userId => socket.id
 
 const chatHandler = (io) => {
+  // Authenticate socket connection using JWT
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -20,20 +21,21 @@ const chatHandler = (io) => {
         return next(new Error('Authentication error: User not found'));
       }
 
-      socket.user = user; // attach the user for later use
+      socket.user = user; // Attach user to socket for later use
       next();
     } catch (err) {
-      console.error('Socket auth error:', err.message);
+      console.error('Socket authentication error:', err.message);
       next(new Error('Authentication error'));
     }
   });
 
+  // Handle connection
   io.on('connection', (socket) => {
     const userId = socket.user._id.toString();
-    console.log(`User ${userId} connected via socket ${socket.id}`);
+    console.log(`✅ User ${userId} connected via socket ${socket.id}`);
     connectedUsers.set(userId, socket.id);
 
-    // Handle sending a private message
+    // 🔹 Handle private message
     socket.on('private_message', async ({ receiverId, message }) => {
       try {
         const newMessage = await Message.create({
@@ -42,21 +44,34 @@ const chatHandler = (io) => {
           message
         });
 
+        const messagePayload = {
+          senderId: userId,
+          receiverId,
+          message,
+          timestamp: newMessage.timestamp
+        };
+
+        // Emit to sender (confirmation)
+        socket.emit('receive_message', messagePayload);
+
+        // Emit to receiver if online
         const receiverSocketId = connectedUsers.get(receiverId);
         if (receiverSocketId) {
-          io.to(receiverSocketId).emit('private_message', {
-            senderId: userId,
-            message,
-            timestamp: newMessage.timestamp
-          });
+          io.to(receiverSocketId).emit('receive_message', messagePayload);
         }
       } catch (error) {
-        console.error('Error saving message:', error.message);
+        console.error('❌ Error saving or sending message:', error.message);
+        socket.emit('error_message', {
+          message: 'Failed to send message',
+          error: error.message
+        });
       }
     });
 
+
+    // 🔹 Handle disconnect
     socket.on('disconnect', () => {
-      console.log(`User ${userId} disconnected`);
+      console.log(`🚫 User ${userId} disconnected`);
       connectedUsers.delete(userId);
     });
   });
