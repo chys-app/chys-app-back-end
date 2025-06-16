@@ -8,6 +8,7 @@ const userRoutes = require('./routes/userRoutes');
 const petProfileRoutes = require('./routes/petProfileRoutes');
 const postRoutes = require('./routes/postRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const storyRoutes = require('./routes/storyRoutes')
 const { connectDB, disconnectDB } = require('./config/database');
 const logger = require('./config/logger');
 const chatHandler = require('./sockets/chatHandler');
@@ -42,6 +43,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/pet-profile', petProfileRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/story', storyRoutes)
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Pet App API' });
