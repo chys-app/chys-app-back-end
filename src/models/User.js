@@ -63,7 +63,7 @@ const userSchema = new mongoose.Schema({
   numericUid: {
     type: Number,
     unique: true,
-    required: true
+    required: false
   }
 }, {
   timestamps: true
@@ -73,34 +73,46 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ location: '2dsphere' });
 
 
-userSchema.pre('save', async function(next) {
-  
-  if (this.isNew) {
-    const counter = await Counter.findByIdAndUpdate(
-      { _id: 'userNumericId' },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
-    this.numericUid = counter.seq;
-  }
+userSchema.pre('save', async function (next) {
+  try {
+    if (this.isNew) {
+      console.log("Running pre-save hook to assign numericUid...");
 
-  // Password hashing
-  if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, 10);
-  }
+      const counter = await Counter.findByIdAndUpdate(
+        { _id: 'userNumericId' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
 
-  // Set GeoJSON location
-  if (this.isModified('lat') || this.isModified('lng')) {
-    if (this.lat != null && this.lng != null) {
-      this.location = {
-        type: 'Point',
-        coordinates: [this.lng, this.lat]
-      };
+      console.log("Counter value:", counter?.seq);
+
+      if (!counter) {
+        throw new Error("Counter not found or failed to update.");
+      }
+
+      this.numericUid = counter.seq;
     }
-  }
 
-  next();
+    if (this.isModified('password')) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
+
+    if (this.isModified('lat') || this.isModified('lng')) {
+      if (this.lat != null && this.lng != null) {
+        this.location = {
+          type: 'Point',
+          coordinates: [this.lng, this.lat]
+        };
+      }
+    }
+
+    next();
+  } catch (err) {
+    console.error("Error in user pre-save hook:", err);
+    next(err);
+  }
 });
+
 
 
 userSchema.methods.comparePassword = async function(candidatePassword) {
