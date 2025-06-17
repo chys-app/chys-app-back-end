@@ -27,44 +27,46 @@ const uploadStory = asyncHandler(async (req, res) => {
 // @route   GET /api/stories/public
 // @access  Private
 const getPublicStories = asyncHandler(async (req, res) => {
-    const stories = await Story.find({
-      userId: { $ne: req.user._id },
-      expiresAt: { $gt: new Date() }
-    })
-      .sort({ createdAt: 1 }) // important for frontend playback order
-      .populate('userId petId', 'name image');
-  
-    // Group stories by userId
-    const grouped = {};
-  
-    for (const story of stories) {
-      const uid = story.userId._id.toString();
-  
-      if (!grouped[uid]) {
-        grouped[uid] = {
-          user: story.userId,
-          pet: story.petId || null,
-          stories: []
-        };
-      }
-  
-      grouped[uid].stories.push({
-        _id: story._id,
-        mediaUrl: story.mediaUrl,
-        caption: story.caption,
-        createdAt: story.createdAt,
-        expiresAt: story.expiresAt
-      });
-    }
-  
-    const response = Object.values(grouped);
-    res.json({ success: true, data: response });
-  });
-  
+  const userId = req.user._id;
 
-// @desc    View a single story
-// @route   GET /api/stories/:id
-// @access  Private
+  const stories = await Story.find({
+    userId: { $ne: userId },
+    expiresAt: { $gt: new Date() }
+  })
+    .sort({ createdAt: 1 })
+    .populate('userId petId', 'name image');
+
+  // Group stories by userId
+  const grouped = {};
+
+  for (const story of stories) {
+    const uid = story.userId._id.toString();
+
+    if (!grouped[uid]) {
+      grouped[uid] = {
+        user: story.userId,
+        pet: story.petId || null,
+        stories: []
+      };
+    }
+
+    const isView = story.views?.some(viewerId => viewerId.toString() === userId.toString());
+
+    grouped[uid].stories.push({
+      _id: story._id,
+      mediaUrl: story.mediaUrl,
+      caption: story.caption,
+      createdAt: story.createdAt,
+      expiresAt: story.expiresAt,
+      isView
+    });
+  }
+
+  const response = Object.values(grouped);
+  res.json({ success: true, data: response });
+});
+
+
 const getSingleStory = asyncHandler(async (req, res) => {
     const storyId = req.params.id;
   
