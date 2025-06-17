@@ -12,17 +12,22 @@
   "license": "ISC",
   "description": "Pet App Backend API",
   "dependencies": {
+    "agora-access-token": "^2.0.4",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-async-handler": "^1.2.0",
+    "firebase-admin": "^13.4.0",
+    "install": "^0.13.0",
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.3",
     "multer": "^2.0.0",
     "multer-storage-cloudinary": "^4.0.0",
+    "npm": "^11.4.2",
     "socket.io": "^4.8.1",
+    "uuid": "^11.1.0",
     "winston": "^3.17.0"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 // Register new user
 const register = async (req, res) => {
   try {
-    const { name, email, password ,lat, lng} = req.body;
+    const { name, email, password ,lat, lng, fcmToken} = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -13,7 +13,7 @@ const register = async (req, res) => {
     }
 
     // Create new user
-    const user = new User({ name, email, password ,lat, lng });
+    const user = new User({ name, email, password ,lat, lng, fcmToken});
     await user.save();
 
     // Generate token
@@ -30,7 +30,7 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password ,lat, lng} = req.body;
+    const { email, password ,lat, lng, fcmToken} = req.body;
     
     // Find user
     const user = await User.findOne({ email });
@@ -45,6 +45,7 @@ const login = async (req, res) => {
     }
     user.lat = lat;
     user.lng = lng;
+    user.fcmToken = fcmToken
     await user.save();
     // Generate token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
