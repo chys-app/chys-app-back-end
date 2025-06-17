@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Counter = require('./Counter'); // make sure the path is correct
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -56,23 +57,39 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
-  fcmToken:{
+  fcmToken: {
     type: String
+  },
+  numericUid: {
+    type: Number,
+    unique: true,
+    required: true
   }
 }, {
   timestamps: true
 });
 
-// Index for Geo queries
+
 userSchema.index({ location: '2dsphere' });
 
-// Password hashing before saving
+
 userSchema.pre('save', async function(next) {
+  
+  if (this.isNew) {
+    const counter = await Counter.findByIdAndUpdate(
+      { _id: 'userNumericId' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    this.numericUid = counter.seq;
+  }
+
+  // Password hashing
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, 10);
   }
 
-  // Update location if lat/lng are modified
+  // Set GeoJSON location
   if (this.isModified('lat') || this.isModified('lng')) {
     if (this.lat != null && this.lng != null) {
       this.location = {
@@ -85,7 +102,7 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Compare password
+
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

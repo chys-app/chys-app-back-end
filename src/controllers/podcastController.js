@@ -62,7 +62,7 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Not authorized to join this podcast' });
   }
 
-  const token = generateAgoraToken(podcast.agoraChannel, req.user._id);
+  const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
 
   res.json({
     token,
