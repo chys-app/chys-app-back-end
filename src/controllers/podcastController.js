@@ -67,7 +67,7 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
   res.json({
     token,
     channelName: podcast.agoraChannel,
-    uid: req.user._id
+    uid: req.user.numericUid
   });
 });
 
