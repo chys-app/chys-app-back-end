@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const asyncHandler  = require('express-async-handler')
+const asyncHandler  = require('express-async-handler');
+const PetProfile = require('../models/PetProfile');
 
 // Register new user
 const register = async (req, res) => {
