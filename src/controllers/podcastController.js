@@ -114,10 +114,16 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Not authorized to join this podcast' });
   }
 
-  // If host is requesting the token, mark the podcast as "live"
+  // Set podcast status to live if host is joining
   if (isHost && podcast.status !== 'live') {
     podcast.status = 'live';
     await podcast.save();
+  }
+
+  // Fetch host user to get numericUid
+  const hostUser = await User.findById(podcast.host).select('numericUid');
+  if (!hostUser || typeof hostUser.numericUid !== 'number') {
+    return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
   }
 
   const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
@@ -125,7 +131,8 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
   res.json({
     token,
     channelName: podcast.agoraChannel,
-    uid: req.user.numericUid
+    uid: req.user.numericUid,
+    hostNumericUid: hostUser.numericUid // 👈 Added
   });
 });
 
