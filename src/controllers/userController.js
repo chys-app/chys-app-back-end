@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const asyncHandler  = require('express-async-handler')
 
 // Register new user
 const register = async (req, res) => {
@@ -77,8 +78,29 @@ const getProfile = async (req, res) => {
   }
 };
 
+const getAllUsersBasic = asyncHandler(async (req, res) => {
+  const users = await User.find({}, 'name profilePic petProfiles')
+    .populate({
+      path: 'petProfiles',
+      select: 'name profilePic bio'
+    });
+
+  const formattedUsers = users.map(user => ({
+    name: user.name,
+    profilePic: user.profilePic,
+    pets: user.petProfiles.map(pet => ({
+      name: pet.name,
+      profilePic: pet.profilePic,
+      bio: pet.bio
+    }))
+  }));
+
+  res.json({ success: true, users: formattedUsers });
+});
+
 module.exports = {
   register,
   login,
-  getProfile
+  getProfile,
+  getAllUsersBasic
 }; 

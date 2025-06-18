@@ -47,6 +47,59 @@ exports.createPodcast = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, podcast });
 });
 
+exports.editPodcast = asyncHandler(async (req, res) => {
+  const podcastId = req.params.id;
+  const { title, description, guests, petProfiles, scheduledAt } = req.body;
+
+  // Validate input
+  if (!podcastId) {
+    return res.status(400).json({ message: 'Podcast ID is required.' });
+  }
+
+  const podcast = await Podcast.findById(podcastId);
+
+  if (!podcast) {
+    return res.status(404).json({ message: 'Podcast not found.' });
+  }
+
+  // Only host can update
+  if (podcast.host.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'You are not authorized to edit this podcast.' });
+  }
+
+  // Update allowed fields
+  if (title) podcast.title = title;
+  if (description) podcast.description = description;
+  if (Array.isArray(guests)) podcast.guests = guests;
+  if (Array.isArray(petProfiles)) podcast.petProfiles = petProfiles;
+  if (scheduledAt) podcast.scheduledAt = scheduledAt;
+
+  await podcast.save();
+
+  // Optionally: Send updated invitations to guests (if changed)
+  if (Array.isArray(guests)) {
+    const guestUsers = await User.find({ _id: { $in: guests }, fcmToken: { $ne: null } });
+
+    const messages = guestUsers.map(user => ({
+      token: user.fcmToken,
+      notification: {
+        title: 'Podcast Updated ✏️',
+        body: `${req.user.name} has updated the podcast scheduled on ${new Date(podcast.scheduledAt).toLocaleString()}`
+      },
+      data: {
+        type: 'PODCAST_UPDATE',
+        podcastId: podcast._id.toString()
+      }
+    }));
+
+    await Promise.all(
+      messages.map(msg => admin.messaging().send(msg).catch(err => null))
+    );
+  }
+
+  res.json({ success: true, podcast });
+});
+
 exports.getPodcastToken = asyncHandler(async (req, res) => {
   const podcast = await Podcast.findById(req.params.id);
 
@@ -54,12 +107,17 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Podcast not found' });
   }
 
-  const isAllowed =
-    podcast.host.toString() === req.user._id.toString() ||
-    podcast.guests.map(id => id.toString()).includes(req.user._id.toString());
+  const isHost = podcast.host.toString() === req.user._id.toString();
+  const isGuest = podcast.guests.map(id => id.toString()).includes(req.user._id.toString());
 
-  if (!isAllowed) {
+  if (!isHost && !isGuest) {
     return res.status(403).json({ message: 'Not authorized to join this podcast' });
+  }
+
+  // If host is requesting the token, mark the podcast as "live"
+  if (isHost && podcast.status !== 'live') {
+    podcast.status = 'live';
+    await podcast.save();
   }
 
   const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
