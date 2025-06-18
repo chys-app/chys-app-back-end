@@ -64,6 +64,14 @@ const userSchema = new mongoose.Schema({
     type: Number,
     unique: true,
     required: false
+  },
+  profilePic:{
+    type:String,
+    default: ""
+  },
+  bio:{
+    type: String,
+    default: ""
   }
 }, {
   timestamps: true

@@ -6,16 +6,29 @@ const PetProfile = require('../models/PetProfile');
 // Register new user
 const register = async (req, res) => {
   try {
-    const { name, email, password ,lat, lng, fcmToken} = req.body;
-    
+    const { name, email, password, lat, lng, fcmToken, bio } = req.body;
+
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Get uploaded profilePic URL from Cloudinary
+    const profilePic = req.file?.path || '';
+
     // Create new user
-    const user = new User({ name, email, password ,lat, lng, fcmToken});
+    const user = new User({
+      name,
+      email,
+      password,
+      lat,
+      lng,
+      fcmToken,
+      bio,
+      profilePic
+    });
+
     await user.save();
 
     // Generate token
@@ -28,7 +41,6 @@ const register = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 // Login user
 const login = async (req, res) => {
   try {
@@ -81,10 +93,10 @@ const getProfile = async (req, res) => {
 
 const getAllUsersBasic = asyncHandler(async (req, res) => {
   // Step 1: Fetch all users
-  const users = await User.find({}, 'name profilePic');
+  const users = await User.find({}, '_id name profilePic bio');
 
   // Step 2: Fetch all pet profiles
-  const pets = await PetProfile.find({}, 'user name profilePic bio');
+  const pets = await PetProfile.find({}, 'user _id name profilePic bio');
 
   // Step 3: Group pets by userId
   const petMap = {};
