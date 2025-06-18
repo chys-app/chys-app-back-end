@@ -13,7 +13,7 @@ const auth = require('../middleware/auth');
 
 router.post('/', auth, upload.single('media'), uploadStory);
 router.get('/public', auth, getPublicStories);
-router.get('/:id', auth, getSingleStory);
+router.get('/:id?', auth, getSingleStory);
 router.put('/:id', auth, editStory);
 router.delete('/:id', auth, deleteStory);
 
