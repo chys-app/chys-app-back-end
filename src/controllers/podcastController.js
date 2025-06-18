@@ -130,11 +130,15 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
 });
 
 exports.getUserPodcasts = asyncHandler(async (req, res) => {
-  const hosted = await Podcast.find({ host: req.user._id });
-  const guest = await Podcast.find({ guests: req.user._id });
+  const podcasts = await Podcast.find({
+    $or: [
+      { host: req.user._id },
+      { guests: req.user._id }
+    ]
+  }).sort({ scheduledAt: -1 }); // Optional: sort by date
 
   res.json({
-    hosted,
-    guest
+    success: true,
+    podcasts
   });
 });
