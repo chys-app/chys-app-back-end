@@ -8,7 +8,7 @@ const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
 function generateAgoraToken(channelName, uid) {
   const role = RtcRole.PUBLISHER;
-  const expirationTimeInSeconds = 3600;
+  const expirationTimeInSeconds = 66000;
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
