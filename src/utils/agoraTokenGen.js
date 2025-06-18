@@ -16,10 +16,11 @@ function generateAgoraToken(channelName, uid) {
     APP_ID,
     APP_CERTIFICATE,
     channelName,
-    0,
+    uid,
     role,
     privilegeExpiredTs
   );
+  console.log(typeof(uid))
   console.log(APP_ID, APP_CERTIFICATE, uid, role, channelName)
   return token;
   
