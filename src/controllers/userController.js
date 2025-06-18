@@ -79,24 +79,34 @@ const getProfile = async (req, res) => {
 };
 
 const getAllUsersBasic = asyncHandler(async (req, res) => {
-  const users = await User.find({}, 'name profilePic petProfiles')
-    .populate({
-      path: 'petProfiles',
-      select: 'name profilePic bio'
-    });
+  // Step 1: Fetch all users
+  const users = await User.find({}, 'name profilePic');
 
-  const formattedUsers = users.map(user => ({
-    name: user.name,
-    profilePic: user.profilePic,
-    pets: user.petProfiles.map(pet => ({
+  // Step 2: Fetch all pet profiles
+  const pets = await PetProfile.find({}, 'user name profilePic bio');
+
+  // Step 3: Group pets by userId
+  const petMap = {};
+  pets.forEach(pet => {
+    const userId = pet.user.toString();
+    if (!petMap[userId]) petMap[userId] = [];
+    petMap[userId].push({
       name: pet.name,
       profilePic: pet.profilePic,
       bio: pet.bio
-    }))
+    });
+  });
+
+  // Step 4: Build final response
+  const response = users.map(user => ({
+    name: user.name,
+    profilePic: user.profilePic,
+    pets: petMap[user._id.toString()] || []
   }));
 
-  res.json({ success: true, users: formattedUsers });
+  res.json({ success: true, users: response });
 });
+
 
 module.exports = {
   register,
