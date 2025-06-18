@@ -124,7 +124,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
 
 const getAllUsersBasic = asyncHandler(async (req, res) => {
-  // Step 1: Fetch all users
+  // Step 1: Fetch all users with selected fields
   const users = await User.find({}, '_id name profilePic bio');
 
   // Step 2: Fetch all pet profiles
@@ -136,21 +136,25 @@ const getAllUsersBasic = asyncHandler(async (req, res) => {
     const userId = pet.user.toString();
     if (!petMap[userId]) petMap[userId] = [];
     petMap[userId].push({
+      _id: pet._id,
       name: pet.name,
       profilePic: pet.profilePic,
       bio: pet.bio
     });
   });
 
-  // Step 4: Build final response
+  // Step 4: Build final response with user info + pets
   const response = users.map(user => ({
+    _id: user._id,
     name: user.name,
     profilePic: user.profilePic,
+    bio: user.bio,
     pets: petMap[user._id.toString()] || []
   }));
 
   res.json({ success: true, users: response });
 });
+
 
 
 module.exports = {
