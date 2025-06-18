@@ -91,6 +91,38 @@ const getProfile = async (req, res) => {
   }
 };
 
+const updateUserProfile = asyncHandler(async (req, res) => {
+  const { name, bio } = req.body;
+
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Update fields
+  if (name) user.name = name;
+  if (bio) user.bio = bio;
+
+  // If a new profile picture is uploaded
+  if (req.file?.path) {
+    user.profilePic = req.file.path;
+  }
+
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'Profile updated successfully',
+    user: {
+      _id: user._id,
+      name: user.name,
+      bio: user.bio,
+      profilePic: user.profilePic
+    }
+  });
+});
+
+
 const getAllUsersBasic = asyncHandler(async (req, res) => {
   // Step 1: Fetch all users
   const users = await User.find({}, '_id name profilePic bio');
@@ -125,5 +157,6 @@ module.exports = {
   register,
   login,
   getProfile,
-  getAllUsersBasic
+  getAllUsersBasic,
+  updateUserProfile
 }; 
