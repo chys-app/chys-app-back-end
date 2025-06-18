@@ -16,7 +16,7 @@ function generateAgoraToken(channelName, uid) {
     APP_ID,
     APP_CERTIFICATE,
     channelName,
-    uid,
+    0,
     role,
     privilegeExpiredTs
   );
