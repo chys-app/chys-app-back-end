@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const generateAgoraToken = require('../utils/agoraTokenGen');
 const User = require('../models/User');
 const admin = require('../config/firebaseAdmin')
+const { sendNotification } = require('../utils/notificationUtil');
 
 exports.createPodcast = asyncHandler(async (req, res) => {
   const { title, description, guests, petProfiles, scheduledAt } = req.body;
@@ -13,7 +14,8 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Title and scheduledAt are required.' });
   }
 
-  const channelName = uuidv4(); // Agora channel
+  const channelName = uuidv4();
+
   const podcast = await Podcast.create({
     host: req.user._id,
     guests,
@@ -24,28 +26,19 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     agoraChannel: channelName
   });
 
-  // 🔔 Notify Guests
-  const guestUsers = await User.find({ _id: { $in: guests }, fcmToken: { $ne: null } });
-
-  const messages = guestUsers.map(user => ({
-    token: user.fcmToken,
-    notification: {
-      title: 'Podcast Invitation 🎙️',
-      body: `${req.user.name} has invited you to a podcast on ${new Date(scheduledAt).toLocaleString()}`
-    },
+  await sendNotification({
+    userIds: guests,
+    title: 'Podcast Invitation 🎙️',
+    message: `${req.user.name} has invited you to a podcast on ${new Date(scheduledAt).toLocaleString()}`,
+    type: 'PODCAST_INVITE',
     data: {
-      type: 'PODCAST_INVITE',
-      podcastId: podcast._id.toString()
+      podcastId: podcast._id.toString(),
     }
-  }));
-
-  // Send each notification
-  const response = await Promise.all(
-    messages.map(msg => admin.messaging().send(msg).catch(err => null))
-  );
+  });
 
   res.status(201).json({ success: true, podcast });
 });
+
 
 exports.editPodcast = asyncHandler(async (req, res) => {
   const podcastId = req.params.id;

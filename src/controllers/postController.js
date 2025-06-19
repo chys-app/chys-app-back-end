@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const { cloudinary } = require('../config/cloudinary');
+const { sendNotification } = require('../utils/notificationUtil');
 
 // Create a new post
 const createPost = async (req, res) => {
@@ -214,28 +215,42 @@ const deletePost = async (req, res) => {
 // Like/Unlike a post
 const toggleLike = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
-    
+    const post = await Post.findById(req.params.id).populate('creator');
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
 
     const likeIndex = post.likes.indexOf(req.user._id);
-    
+    let liked = false;
+
     if (likeIndex === -1) {
       post.likes.push(req.user._id);
+      liked = true;
     } else {
       post.likes.splice(likeIndex, 1);
     }
 
     await post.save();
-    
-    // Populate all necessary fields
+
     await post.populate([
       { path: 'creator', select: 'username profilePicture' },
       { path: 'likes', select: 'username profilePicture' },
       { path: 'comments.user', select: 'username profilePicture' }
     ]);
+
+    // 🔔 Notify post creator
+    if (liked && post.creator._id.toString() !== req.user._id.toString()) {
+      await sendNotification({
+        userIds: post.creator._id,
+        title: 'New Like ❤️',
+        message: `${req.user.name} liked your post.`,
+        type: 'LIKE',
+        data: {
+          postId: post._id.toString()
+        }
+      });
+    }
 
     res.json(post);
   } catch (error) {
@@ -243,17 +258,16 @@ const toggleLike = async (req, res) => {
   }
 };
 
-// Add a comment to a post
 const addComment = async (req, res) => {
   try {
     const { message } = req.body;
-    
+
     if (!message) {
       return res.status(400).json({ message: 'Comment message is required' });
     }
 
-    const post = await Post.findById(req.params.id);
-    
+    const post = await Post.findById(req.params.id).populate('creator');
+
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
@@ -264,19 +278,32 @@ const addComment = async (req, res) => {
     });
 
     await post.save();
-    
-    // Populate all necessary fields
+
     await post.populate([
       { path: 'creator', select: 'username profilePicture' },
       { path: 'likes', select: 'username profilePicture' },
       { path: 'comments.user', select: 'username profilePicture' }
     ]);
-    
+
+    // 🔔 Notify post creator
+    if (post.creator._id.toString() !== req.user._id.toString()) {
+      await sendNotification({
+        userIds: post.creator._id,
+        title: 'New Comment 💬',
+        message: `${req.user.name} commented on your post: "${message}"`,
+        type: 'COMMENT',
+        data: {
+          postId: post._id.toString()
+        }
+      });
+    }
+
     res.json(post);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Get user's posts
 const getUserPosts = async (req, res) => {
