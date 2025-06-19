@@ -6,6 +6,7 @@ const generateAgoraToken = require('../utils/agoraTokenGen');
 const User = require('../models/User');
 const admin = require('../config/firebaseAdmin')
 const { sendNotification } = require('../utils/notificationUtil');
+const { startRecording, stopRecording } = require('../utils/agoraUtils');
 
 exports.createPodcast = asyncHandler(async (req, res) => {
   const { title, description, guests, petProfiles, scheduledAt } = req.body;
@@ -95,28 +96,41 @@ exports.editPodcast = asyncHandler(async (req, res) => {
 
 exports.getPodcastToken = asyncHandler(async (req, res) => {
   const podcast = await Podcast.findById(req.params.id);
+  if (!podcast) return res.status(404).json({ message: 'Podcast not found' });
 
-  if (!podcast) {
-    return res.status(404).json({ message: 'Podcast not found' });
-  }
-
-  const isHost = podcast.host.toString() === req.user._id.toString();
-  const isGuest = podcast.guests.map(id => id.toString()).includes(req.user._id.toString());
+  const userId = req.user._id.toString();
+  const isHost = podcast.host.toString() === userId;
+  const isGuest = podcast.guests.some(id => id.toString() === userId);
 
   if (!isHost && !isGuest) {
     return res.status(403).json({ message: 'Not authorized to join this podcast' });
   }
 
-  // Set podcast status to live if host is joining
-  if (isHost && podcast.status !== 'live') {
-    podcast.status = 'live';
-    await podcast.save();
-  }
-
-  // Fetch host user to get numericUid
+  // Fetch host's numeric UID for token & recording
   const hostUser = await User.findById(podcast.host).select('numericUid');
   if (!hostUser || typeof hostUser.numericUid !== 'number') {
     return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
+  }
+
+  // Start recording when host joins for the first time
+  if (isHost && podcast.status !== 'live') {
+    podcast.status = 'live';
+
+    if (!podcast.agoraSession?.sid) {
+      try {
+        const { resourceId, sid } = await startRecording(
+          podcast._id.toString(),
+          podcast.agoraChannel,
+          hostUser.numericUid
+        );
+        podcast.agoraSession = { resourceId, sid };
+      } catch (err) {
+        console.error('Failed to start recording:', err.message);
+        return res.status(500).json({ message: 'Failed to start recording' });
+      }
+    }
+
+    await podcast.save();
   }
 
   const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
@@ -125,8 +139,47 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     token,
     channelName: podcast.agoraChannel,
     uid: req.user.numericUid,
-    hostNumericUid: hostUser.numericUid // 👈 Added
+    hostNumericUid: hostUser.numericUid,
   });
+});
+
+exports.endPodcast = asyncHandler(async (req, res) => {
+  const podcast = await Podcast.findById(req.params.id);
+  if (!podcast) return res.status(404).json({ message: 'Podcast not found' });
+
+  if (podcast.host.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'Only the host can end the podcast' });
+  }
+
+  if (podcast.status === 'ended') {
+    return res.status(400).json({ message: 'Podcast already ended' });
+  }
+
+  try {
+    const hostUser = await User.findById(podcast.host).select('numericUid');
+    if (!hostUser || typeof hostUser.numericUid !== 'number') {
+      return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
+    }
+
+    const { recordingUrl } = await stopRecording(
+      podcast._id.toString(),
+      podcast.agoraChannel,
+      hostUser.numericUid
+    );
+
+    podcast.status = 'ended';
+    podcast.recordingUrl = recordingUrl || null;
+    podcast.agoraSession = undefined;
+    await podcast.save();
+
+    res.json({
+      message: 'Podcast ended and recording stopped',
+      recordingUrl,
+    });
+  } catch (err) {
+    console.error('Stop recording error:', err.message);
+    res.status(500).json({ message: 'Failed to stop recording' });
+  }
 });
 
 exports.getUserPodcasts = asyncHandler(async (req, res) => {

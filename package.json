@@ -13,6 +13,7 @@
   "description": "Pet App Backend API",
   "dependencies": {
     "agora-access-token": "^2.0.4",
+    "axios": "^1.10.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",

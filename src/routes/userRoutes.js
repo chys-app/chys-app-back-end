@@ -15,7 +15,6 @@ router.get('/allUsers', auth, getAllUsersBasic)
 // Protected routes
 router.get('/profile/:userId?', auth, getProfile); // Get own profile
 router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);
-
 router.get('/notifications', auth, getUserNotifications)
 
 module.exports = router; 

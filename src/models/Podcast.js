@@ -15,6 +15,10 @@ const podcastSchema = new mongoose.Schema({
   agoraChannel: { type: String, required: true }, // Channel name
   recordingUrl: { type: String }, // Optional: Save recording file URL
   createdAt: { type: Date, default: Date.now },
+  agoraSession: {
+    resourceId: String,
+    sid: String,
+  },
 });
 
 module.exports = mongoose.model("Podcast", podcastSchema);

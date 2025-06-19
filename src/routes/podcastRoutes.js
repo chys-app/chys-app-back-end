@@ -6,6 +6,7 @@ const podcastController = require('../controllers/podcastController');
 
 router.post('/', auth, podcastController.createPodcast);
 router.get('/:id/token', auth, podcastController.getPodcastToken);
+router.post('/:id/end', auth, podcastController.endPodcast);
 router.get('/', auth, podcastController.getUserPodcasts)
 router.put('/:id', auth, podcastController.editPodcast);
 
