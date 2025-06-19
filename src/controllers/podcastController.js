@@ -125,6 +125,7 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
         );
         podcast.agoraSession = { resourceId, sid };
       } catch (err) {
+        console.log(err)
         console.error('Failed to start recording:', err.message);
         return res.status(500).json({ message: 'Failed to start recording' });
       }
