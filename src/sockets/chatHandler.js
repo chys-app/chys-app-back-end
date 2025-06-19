@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const { sendNotification } = require('../utils/notificationUtil');
+
 
 const connectedUsers = new Map(); // userId => socket.id
 
@@ -35,7 +37,6 @@ const chatHandler = (io) => {
     console.log(`✅ User ${userId} connected via socket ${socket.id}`);
     connectedUsers.set(userId, socket.id);
 
-    // 🔹 Handle private message
     socket.on('private_message', async ({ receiverId, message }) => {
       try {
         const newMessage = await Message.create({
@@ -43,21 +44,35 @@ const chatHandler = (io) => {
           receiverId,
           message
         });
-
+    
         const messagePayload = {
           senderId: userId,
           receiverId,
           message,
           timestamp: newMessage.timestamp
         };
-
-        // Emit to sender (confirmation)
+    
+        // Emit to sender
         socket.emit('receive_message', messagePayload);
-
+    
         // Emit to receiver if online
         const receiverSocketId = connectedUsers.get(receiverId);
         if (receiverSocketId) {
           io.to(receiverSocketId).emit('receive_message', messagePayload);
+        }
+    
+        // 🔔 Send notification (whether online or offline)
+        if (receiverId !== userId) {
+          await sendNotification({
+            userIds: receiverId,
+            title: 'New Message 📩',
+            message: `${socket.user.name} sent you a message.`,
+            type: 'MESSAGE',
+            data: {
+              senderId: userId,
+              messageId: newMessage._id.toString()
+            }
+          });
         }
       } catch (error) {
         console.error('❌ Error saving or sending message:', error.message);
