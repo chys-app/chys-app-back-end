@@ -19,7 +19,7 @@ async function acquireResource(channel, uid) {
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/acquire`,
     {
       cname: channel,
-      uid,
+      uid: uid.toString(),
       clientRequest: {},
     },
     getAgoraAuth()
