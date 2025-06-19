@@ -142,7 +142,24 @@ exports.getUserPodcasts = asyncHandler(async (req, res) => {
       { host: req.user._id },
       { guests: req.user._id }
     ]
-  }).sort({ scheduledAt: -1 }); // Optional: sort by date
+  })
+    .sort({ scheduledAt: -1 })
+    .populate({
+      path: 'host',
+      select: 'name bio profilePic'
+    })
+    .populate({
+      path: 'guests',
+      select: 'name bio profilePic'
+    })
+    .populate({
+      path: 'petProfiles',
+      select: 'name profilePic user',
+      populate: {
+        path: 'user',
+        select: 'name' // optional: for clarity, though we already get this from `host` and `guests`
+      }
+    });
 
   res.json({
     success: true,
