@@ -76,15 +76,19 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const userId = req.params.userId || req.user._id;
-    
+
     // Get user profile
     const user = await User.findById(userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Get all pet profiles for this user
+    const petProfiles = await PetProfile.find({ user: userId });
+
     res.json({
-      user
+      user,
+      petProfiles
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

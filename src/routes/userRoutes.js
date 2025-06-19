@@ -13,8 +13,7 @@ router.get('/', (req, res)=>{
 router.get('/allUsers', auth, getAllUsersBasic)
 
 // Protected routes
-router.get('/profile', auth, getProfile); // Get own profile
-router.get('/profile/:userId', getProfile); // Get any user's profile
+router.get('/profile/:userId?', auth, getProfile); // Get own profile
 router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);
 
 router.get('/notifications', auth, getUserNotifications)
