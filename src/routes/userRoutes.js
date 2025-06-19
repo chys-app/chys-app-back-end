@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 
@@ -16,5 +16,7 @@ router.get('/allUsers', auth, getAllUsersBasic)
 router.get('/profile', auth, getProfile); // Get own profile
 router.get('/profile/:userId', getProfile); // Get any user's profile
 router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);
+
+router.get('/notifications', auth, getUserNotifications)
 
 module.exports = router; 

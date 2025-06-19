@@ -155,6 +155,17 @@ const getAllUsersBasic = asyncHandler(async (req, res) => {
   res.json({ success: true, users: response });
 });
 
+const getUserNotifications = asyncHandler(async (req, res) => {
+  const notifications = await Notification.find({ userId: req.user._id })
+    .sort({ createdAt: -1 })
+    .limit(50); // Optional limit
+
+  res.json({
+    success: true,
+    count: notifications.length,
+    notifications,
+  });
+});
 
 
 module.exports = {
@@ -162,5 +173,6 @@ module.exports = {
   login,
   getProfile,
   getAllUsersBasic,
-  updateUserProfile
+  updateUserProfile,
+  getUserNotifications
 }; 
