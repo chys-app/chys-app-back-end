@@ -15,5 +15,5 @@ router.get('/allUsers', auth, getAllUsersBasic)
 // Protected routes
 router.get('/profile', auth, getProfile); // Get own profile
 router.get('/profile/:userId', getProfile); // Get any user's profile
-router.put('/profile', auth, updateUserProfile)
+router.put('/profile', auth, upload.single('profilePic'), updateUserProfile)
 module.exports = router; 
