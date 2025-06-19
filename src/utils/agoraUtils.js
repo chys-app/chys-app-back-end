@@ -34,7 +34,7 @@ async function startRecording(podcastId, channel, uid) {
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
     {
       cname: channel,
-      uid,
+      uid: uid.toString(),
       clientRequest: {
         recordingConfig: {
           maxIdleTime: 30,
@@ -73,7 +73,7 @@ async function stopRecording(podcastId, channel, uid) {
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
     {
       cname: channel,
-      uid,
+      uid: uid.toString(),
       clientRequest: {},
     },
     getAgoraAuth()
