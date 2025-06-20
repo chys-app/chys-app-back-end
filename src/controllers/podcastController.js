@@ -9,13 +9,35 @@ const { sendNotification } = require('../utils/notificationUtil');
 const { startRecording, stopRecording, queryRecordingStatus } = require('../utils/agoraUtils');
 
 exports.createPodcast = asyncHandler(async (req, res) => {
-  const { title, description, guests, petProfiles, scheduledAt } = req.body;
+  const {
+    title,
+    description,
+    guests,
+    petProfiles,
+    scheduledAt,
+
+    heading1Text,
+    heading1Font,
+    heading1Color,
+
+    heading2Text,
+    heading2Font,
+    heading2Color,
+
+    bannerLineText,
+    bannerLineFont,
+    bannerLineColor,
+    bannerBackgroundColor,
+  } = req.body;
 
   if (!title || !scheduledAt) {
     return res.status(400).json({ message: 'Title and scheduledAt are required.' });
   }
 
   const channelName = uuidv4();
+
+  // ✅ Extract Cloudinary file URL
+  const bannerImageUrl = req.file?.path || null;
 
   const podcast = await Podcast.create({
     host: req.user._id,
@@ -24,9 +46,28 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     title,
     description,
     scheduledAt,
-    agoraChannel: channelName
+    agoraChannel: channelName,
+    bannerImage: bannerImageUrl,
+
+    heading1: {
+      text: heading1Text,
+      font: heading1Font,
+      color: heading1Color,
+    },
+    heading2: {
+      text: heading2Text,
+      font: heading2Font,
+      color: heading2Color,
+    },
+    bannerLine: {
+      text: bannerLineText,
+      font: bannerLineFont,
+      color: bannerLineColor,
+      background: bannerBackgroundColor,
+    },
   });
 
+  // ✅ Notify guests
   await sendNotification({
     userIds: guests,
     title: 'Podcast Invitation 🎙️',
@@ -34,7 +75,7 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     type: 'PODCAST_INVITE',
     data: {
       podcastId: podcast._id.toString(),
-    }
+    },
   });
 
   res.status(201).json({ success: true, podcast });
