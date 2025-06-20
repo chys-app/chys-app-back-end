@@ -111,55 +111,56 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
   }
 
-  // ✅ Issue token FIRST
+  // ✅ Step 1: Issue token first
   const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
 
-  // 🔁 After issuing token, check and ensure recording is active (if host)
+  // ✅ Step 2: Handle recording if host
   if (isHost) {
     podcast.status = 'live';
-    let shouldStartRecording = true;
+    let recordingJustStarted = false;
 
-    if (podcast.agoraSession?.sid && podcast.agoraSession?.resourceId) {
-      try {
-        const result = await queryRecordingStatus(
-          podcast.agoraSession.resourceId,
-          podcast.agoraSession.sid,
-          podcast.agoraChannel
-        );
-
-        const status = result?.serverResponse?.status;
-        console.log('[Controller] Queried recording status:', status);
-
-        if (status === 'started') {
-          shouldStartRecording = false;
-          console.log('[Controller] Recording already running.');
-        } else {
-          console.warn('[Controller] Recording not active, restarting...');
-        }
-      } catch (err) {
-        console.warn('[Controller] Failed to query recording status:', err.message);
-      }
-    }
-
-    if (shouldStartRecording) {
+    if (!podcast.agoraSession?.sid || !podcast.agoraSession?.resourceId) {
       try {
         const { resourceId, sid } = await startRecording(
           podcast._id.toString(),
           podcast.agoraChannel,
           hostUser.numericUid
         );
+
         console.log('[Controller] Recording started:', { resourceId, sid });
+
         podcast.agoraSession = { resourceId, sid };
+        recordingJustStarted = true;
       } catch (err) {
         console.error('[Controller] Failed to start recording:', err);
-        // Optional: don't return error since token was already issued
       }
     }
 
     await podcast.save();
+
+    // ✅ Step 3: After 5 seconds, check status
+    if (podcast.agoraSession?.sid && podcast.agoraSession?.resourceId) {
+      setTimeout(async () => {
+        try {
+          const result = await queryRecordingStatus(
+            podcast.agoraSession.resourceId,
+            podcast.agoraSession.sid,
+            podcast.agoraChannel
+          );
+          const status = result?.serverResponse?.status;
+
+          console.log('[Controller] Queried recording status after delay:', status);
+          if (status !== 'started') {
+            console.warn('[Controller] ⚠️ Recording may not be active:', result);
+          }
+        } catch (err) {
+          console.warn('[Controller] Failed to query recording status after delay:', err.message);
+        }
+      }, 5000); // ⏱ 5 seconds delay
+    }
   }
 
-  // ✅ Return response right away
+  // ✅ Step 4: Return response immediately
   res.json({
     token,
     channelName: podcast.agoraChannel,
@@ -167,7 +168,6 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     hostNumericUid: hostUser.numericUid,
   });
 });
-
 
 
 exports.endPodcast = asyncHandler(async (req, res) => {
