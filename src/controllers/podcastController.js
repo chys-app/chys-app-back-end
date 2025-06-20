@@ -111,27 +111,15 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
   }
 
-  // Start recording if host and podcast isn't live
-  if (isHost && podcast.status !== 'live') {
+  // ✅ Issue token FIRST
+  const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
+
+  // 🔁 After issuing token, check and ensure recording is active (if host)
+  if (isHost) {
     podcast.status = 'live';
+    let shouldStartRecording = true;
 
-    if (!podcast.agoraSession?.sid) {
-      try {
-        const { resourceId, sid } = await startRecording(
-          podcast._id.toString(),
-          podcast.agoraChannel,
-          hostUser.numericUid
-        );
-
-        console.log('[Controller] Recording started with:', { resourceId, sid });
-
-        podcast.agoraSession = { resourceId, sid };
-      } catch (err) {
-        console.error('[Controller] Failed to start recording:', err);
-        return res.status(500).json({ message: 'Failed to start recording' });
-      }
-    } else {
-      // ✅ Optional: check if recording is still running
+    if (podcast.agoraSession?.sid && podcast.agoraSession?.resourceId) {
       try {
         const result = await queryRecordingStatus(
           podcast.agoraSession.resourceId,
@@ -139,18 +127,39 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
           podcast.agoraChannel
         );
 
-        console.log('[Controller] Recording status:', result);
-        // You can act on `result.status` or `fileList` here if needed
+        const status = result?.serverResponse?.status;
+        console.log('[Controller] Queried recording status:', status);
+
+        if (status === 'started') {
+          shouldStartRecording = false;
+          console.log('[Controller] Recording already running.');
+        } else {
+          console.warn('[Controller] Recording not active, restarting...');
+        }
       } catch (err) {
         console.warn('[Controller] Failed to query recording status:', err.message);
+      }
+    }
+
+    if (shouldStartRecording) {
+      try {
+        const { resourceId, sid } = await startRecording(
+          podcast._id.toString(),
+          podcast.agoraChannel,
+          hostUser.numericUid
+        );
+        console.log('[Controller] Recording started:', { resourceId, sid });
+        podcast.agoraSession = { resourceId, sid };
+      } catch (err) {
+        console.error('[Controller] Failed to start recording:', err);
+        // Optional: don't return error since token was already issued
       }
     }
 
     await podcast.save();
   }
 
-  const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
-
+  // ✅ Return response right away
   res.json({
     token,
     channelName: podcast.agoraChannel,
@@ -158,6 +167,9 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
     hostNumericUid: hostUser.numericUid,
   });
 });
+
+
+
 exports.endPodcast = asyncHandler(async (req, res) => {
   const podcast = await Podcast.findById(req.params.id);
   if (!podcast) return res.status(404).json({ message: 'Podcast not found' });
