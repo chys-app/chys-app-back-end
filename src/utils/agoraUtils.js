@@ -29,8 +29,7 @@ async function acquireResource(channel, uid) {
 
 async function startRecording(podcastId, channel, uid) {
   const resourceId = await acquireResource(channel, uid);
-  console.log(`[Agora] Acquired resourceId: ${resourceId}`);
-
+  console.log('[Agora] Acquired resourceId:', resourceId);
 
   const res = await axios.post(
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
@@ -39,7 +38,7 @@ async function startRecording(podcastId, channel, uid) {
       uid: uid.toString(),
       clientRequest: {
         recordingConfig: {
-          maxIdleTime: 30,
+          maxIdleTime: 300,
           streamTypes: 2,
           channelType: 1,
           videoStreamType: 0,
@@ -56,11 +55,15 @@ async function startRecording(podcastId, channel, uid) {
     },
     getAgoraAuth()
   );
-  console.log('[Agora] Start recording response:', res.data);
+
+  if (!res.data.sid) {
+    console.error('[Agora] No SID returned in start response:', res.data);
+    throw new Error('Start recording failed: No SID');
+  }
 
   const sid = res.data.sid;
+  console.log('[Agora] Start recording response:', res.data);
 
-  // Store in-memory
   recordingSessions[podcastId] = { resourceId, sid };
 
   return { resourceId, sid };
@@ -84,14 +87,19 @@ async function stopRecording(podcastId, channel, uid) {
 
   const { resourceId, sid } = session;
 
-  console.log('[Agora] Stopping recording with:', { resourceId, sid });
+  console.log('[Agora] Stopping recording with:', { resourceId, sid, channel });
+
+  const url = `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`;
+  console.log('[Agora] Stop URL:', url);
 
   const res = await axios.post(
-    `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
+    url,
     {
       cname: channel,
       uid: uid.toString(),
-      clientRequest: {},
+      clientRequest: {
+        async_stop: true,
+      },
     },
     getAgoraAuth()
   );

@@ -95,59 +95,47 @@ exports.editPodcast = asyncHandler(async (req, res) => {
 });
 
 exports.getPodcastToken = asyncHandler(async (req, res) => {
-  console.log(`[🎙️] getPodcastToken: Podcast ID = ${req.params.id}, User ID = ${req.user._id}`);
-
   const podcast = await Podcast.findById(req.params.id);
-  if (!podcast) {
-    console.warn('[🚫] Podcast not found');
-    return res.status(404).json({ message: 'Podcast not found' });
-  }
+  if (!podcast) return res.status(404).json({ message: 'Podcast not found' });
 
   const userId = req.user._id.toString();
   const isHost = podcast.host.toString() === userId;
   const isGuest = podcast.guests.some(id => id.toString() === userId);
 
-  console.log(`[🔍] User Role: ${isHost ? 'Host' : isGuest ? 'Guest' : 'Unauthorized'}`);
-
   if (!isHost && !isGuest) {
-    console.warn('[🚫] Not authorized to join this podcast');
     return res.status(403).json({ message: 'Not authorized to join this podcast' });
   }
 
   const hostUser = await User.findById(podcast.host).select('numericUid');
   if (!hostUser || typeof hostUser.numericUid !== 'number') {
-    console.error('[❗] Failed to retrieve host numeric UID');
     return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
   }
 
-  // Start recording if host joins for the first time
+  // Start recording if host and podcast isn't live
   if (isHost && podcast.status !== 'live') {
     podcast.status = 'live';
 
     if (!podcast.agoraSession?.sid) {
       try {
-        console.log('[📼] Starting recording...');
         const { resourceId, sid } = await startRecording(
           podcast._id.toString(),
           podcast.agoraChannel,
           hostUser.numericUid
         );
+
+        console.log('[Controller] Recording started with:', { resourceId, sid });
+
         podcast.agoraSession = { resourceId, sid };
-        console.log(`[✅] Recording started: resourceId=${resourceId}, sid=${sid}`);
       } catch (err) {
-        console.error('[❌] Failed to start recording:', err.message);
+        console.error('[Controller] Failed to start recording:', err);
         return res.status(500).json({ message: 'Failed to start recording' });
       }
-    } else {
-      console.log('[ℹ️] Recording session already exists');
     }
 
     await podcast.save();
-    console.log('[💾] Podcast status updated to live and saved');
   }
 
   const token = generateAgoraToken(podcast.agoraChannel, req.user.numericUid);
-  console.log(`[🔐] Token generated for UID: ${req.user.numericUid}, Channel: ${podcast.agoraChannel}`);
 
   res.json({
     token,
@@ -157,53 +145,46 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
   });
 });
 
-
 exports.endPodcast = asyncHandler(async (req, res) => {
-  console.log(`[🎙️] endPodcast: Podcast ID = ${req.params.id}, User ID = ${req.user._id}`);
-
   const podcast = await Podcast.findById(req.params.id);
-  if (!podcast) {
-    console.warn('[🚫] Podcast not found');
-    return res.status(404).json({ message: 'Podcast not found' });
-  }
+  if (!podcast) return res.status(404).json({ message: 'Podcast not found' });
 
   if (podcast.host.toString() !== req.user._id.toString()) {
-    console.warn('[🚫] User is not the host');
     return res.status(403).json({ message: 'Only the host can end the podcast' });
   }
 
   if (podcast.status === 'ended') {
-    console.warn('[ℹ️] Podcast already ended');
     return res.status(400).json({ message: 'Podcast already ended' });
   }
 
   try {
     const hostUser = await User.findById(podcast.host).select('numericUid');
     if (!hostUser || typeof hostUser.numericUid !== 'number') {
-      console.error('[❗] Failed to retrieve host numeric UID');
       return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
     }
 
-    console.log('[📼] Stopping recording...');
-    const { recordingUrl } = await stopRecording(
+    // Optional wait before stopping to ensure recording stabilizes
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const { recordingUrl, raw } = await stopRecording(
       podcast._id.toString(),
       podcast.agoraChannel,
       hostUser.numericUid
     );
+
+    console.log('[Controller] Recording stopped. Raw response:', raw);
 
     podcast.status = 'ended';
     podcast.recordingUrl = recordingUrl || null;
     podcast.agoraSession = undefined;
     await podcast.save();
 
-    console.log(`[✅] Podcast ended. Recording URL: ${recordingUrl || 'N/A'}`);
-
     res.json({
       message: 'Podcast ended and recording stopped',
       recordingUrl,
     });
   } catch (err) {
-    console.error('[❌] Stop recording error:', err.message);
+    console.error('[Controller] Stop recording error:', err);
     res.status(500).json({ message: 'Failed to stop recording' });
   }
 });
