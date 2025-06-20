@@ -67,6 +67,17 @@ async function stopRecording(podcastId, channel, uid) {
   const session = recordingSessions[podcastId];
   if (!session) throw new Error("No recording session found");
 
+  // Fallback: If session not in memory, check DB
+  if (!session) {
+    const Podcast = require("../models/Podcast"); // Adjust path
+    const podcast = await Podcast.findById(podcastId);
+    if (!podcast || !podcast.agoraSession) {
+      throw new Error("No recording session found in memory or DB");
+    }
+
+    session = podcast.agoraSession;
+  }
+
   const { resourceId, sid } = session;
 
   const res = await axios.post(
