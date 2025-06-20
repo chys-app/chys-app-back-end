@@ -6,7 +6,7 @@ const generateAgoraToken = require('../utils/agoraTokenGen');
 const User = require('../models/User');
 const admin = require('../config/firebaseAdmin')
 const { sendNotification } = require('../utils/notificationUtil');
-const { startRecording, stopRecording } = require('../utils/agoraUtils');
+const { startRecording, stopRecording, queryRecordingStatus } = require('../utils/agoraUtils');
 
 exports.createPodcast = asyncHandler(async (req, res) => {
   const { title, description, guests, petProfiles, scheduledAt } = req.body;
