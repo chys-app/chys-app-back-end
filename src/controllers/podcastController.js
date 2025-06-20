@@ -140,7 +140,7 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
 
     // ✅ Step 3: After 5 seconds, check status
     if (podcast.agoraSession?.sid && podcast.agoraSession?.resourceId) {
-      setTimeout(async () => {
+      const checkRecordingStatus = async (attempt = 1) => {
         try {
           const result = await queryRecordingStatus(
             podcast.agoraSession.resourceId,
@@ -148,15 +148,23 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
             podcast.agoraChannel
           );
           const status = result?.serverResponse?.status;
-
-          console.log('[Controller] Queried recording status after delay:', status);
+      
+          console.log(`[Controller] [Attempt ${attempt}] Queried recording status:`, status);
           if (status !== 'started') {
-            console.warn('[Controller] ⚠️ Recording may not be active:', result);
+            console.warn(`[Controller] [Attempt ${attempt}] Recording not yet started`);
+            if (attempt < 3) {
+              setTimeout(() => checkRecordingStatus(attempt + 1), 3000); // Retry after 3s
+            }
           }
         } catch (err) {
-          console.warn('[Controller] Failed to query recording status after delay:', err.message);
+          console.warn(`[Controller] [Attempt ${attempt}] Query error:`, err.message);
+          if (attempt < 3) {
+            setTimeout(() => checkRecordingStatus(attempt + 1), 3000); // Retry after 3s
+          }
         }
-      }, 5000); // ⏱ 5 seconds delay
+      };
+      
+      setTimeout(() => checkRecordingStatus(1), 5000); // First check after 5s
     }
   }
 
