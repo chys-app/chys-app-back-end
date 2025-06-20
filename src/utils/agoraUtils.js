@@ -12,7 +12,7 @@ const getAgoraAuth = () => ({
   },
 });
 
-const recordingSessions = {}; // In-memory cache (optional)
+const recordingSessions = {}; // In-memory cache
 
 async function acquireResource(channel, uid) {
   const res = await axios.post(
@@ -43,8 +43,8 @@ async function startRecording(podcastId, channel, uid) {
           videoStreamType: 0,
         },
         storageConfig: {
-          vendor: 1, // 1 = AWS S3
-          region: 1, // Replace if you're using a different S3 region
+          vendor: 1, // AWS S3
+          region: 1,
           bucket: process.env.AWS_S3_BUCKET,
           accessKey: process.env.AWS_ACCESS_KEY,
           secretKey: process.env.AWS_SECRET_KEY,
@@ -57,24 +57,22 @@ async function startRecording(podcastId, channel, uid) {
 
   const sid = res.data.sid;
 
-  // Store session (optional, or you can save to DB)
+  // Store in-memory
   recordingSessions[podcastId] = { resourceId, sid };
 
   return { resourceId, sid };
 }
 
 async function stopRecording(podcastId, channel, uid) {
-  const session = recordingSessions[podcastId];
-  if (!session) throw new Error("No recording session found");
+  let session = recordingSessions[podcastId];
 
-  // Fallback: If session not in memory, check DB
+  // Fallback to DB if session not found in memory
   if (!session) {
-    const Podcast = require("../models/Podcast"); // Adjust path
+    const Podcast = require("../models/Podcast"); // Adjust path if needed
     const podcast = await Podcast.findById(podcastId);
     if (!podcast || !podcast.agoraSession) {
       throw new Error("No recording session found in memory or DB");
     }
-
     session = podcast.agoraSession;
   }
 
@@ -90,7 +88,8 @@ async function stopRecording(podcastId, channel, uid) {
     getAgoraAuth()
   );
 
-  delete recordingSessions[podcastId]; // Clean up cache
+  // Clean up in-memory session
+  delete recordingSessions[podcastId];
 
   const recordingUrl = res.data?.serverResponse?.fileList?.[0] ?? null;
 
