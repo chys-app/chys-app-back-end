@@ -113,8 +113,27 @@ async function stopRecording(podcastId, channel, uid) {
     raw: res.data,
   };
 }
+async function queryRecordingStatus(podcastId) {
+  const session = recordingSessions[podcastId];
+  if (!session) throw new Error("No active session");
+
+  const { resourceId, sid, channel } = session;
+
+  const res = await axios.post(
+    `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/query`,
+    {
+      cname: channel,
+      uid: "5", // Same UID used to start recording
+      clientRequest: {}
+    },
+    getAgoraAuth()
+  );
+
+  return res.data;
+}
 
 module.exports = {
   startRecording,
   stopRecording,
+  queryRecordingStatus
 };
