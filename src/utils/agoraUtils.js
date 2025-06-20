@@ -29,6 +29,8 @@ async function acquireResource(channel, uid) {
 
 async function startRecording(podcastId, channel, uid) {
   const resourceId = await acquireResource(channel, uid);
+  console.log(`[Agora] Acquired resourceId: ${resourceId}`);
+
 
   const res = await axios.post(
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
@@ -54,6 +56,7 @@ async function startRecording(podcastId, channel, uid) {
     },
     getAgoraAuth()
   );
+  console.log('[Agora] Start recording response:', res.data);
 
   const sid = res.data.sid;
 
@@ -66,17 +69,22 @@ async function startRecording(podcastId, channel, uid) {
 async function stopRecording(podcastId, channel, uid) {
   let session = recordingSessions[podcastId];
 
-  // Fallback to DB if session not found in memory
   if (!session) {
-    const Podcast = require("../models/Podcast"); // Adjust path if needed
+    console.warn('[Agora] No session in memory, checking DB...');
+
+    const Podcast = require("../models/Podcast");
     const podcast = await Podcast.findById(podcastId);
+
     if (!podcast || !podcast.agoraSession) {
       throw new Error("No recording session found in memory or DB");
     }
+
     session = podcast.agoraSession;
   }
 
   const { resourceId, sid } = session;
+
+  console.log('[Agora] Stopping recording with:', { resourceId, sid });
 
   const res = await axios.post(
     `https://api.agora.io/v1/apps/${AGORA_APP_ID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
@@ -88,7 +96,6 @@ async function stopRecording(podcastId, channel, uid) {
     getAgoraAuth()
   );
 
-  // Clean up in-memory session
   delete recordingSessions[podcastId];
 
   const recordingUrl = res.data?.serverResponse?.fileList?.[0] ?? null;
