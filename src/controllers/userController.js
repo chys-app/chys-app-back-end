@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const asyncHandler  = require('express-async-handler');
 const PetProfile = require('../models/PetProfile');
 const Notification = require('../models/Notification')
+const mongoose = require('mongoose')
 // Register new user
 const register = async (req, res) => {
   try {
