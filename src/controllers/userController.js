@@ -196,14 +196,19 @@ const toggleFavoritePost = asyncHandler(async (req, res) => {
 });
 
 const getFavoritePosts = asyncHandler(async (req, res) => {
-  console.log("here")
   const user = await User.findById(req.user._id).populate({
     path: 'favorites',
-    populate: { path: 'creator', select: 'name image' } // optional user info
+    populate: { path: 'creator', select: 'name image' }
   });
 
-  res.json({ success: true, favorites: user.favorites });
+  const favoritesWithFlag = user.favorites.map(post => ({
+    ...post.toObject(), // convert Mongoose document to plain object
+    isFavorite: true
+  }));
+
+  res.json({ success: true, favorites: favoritesWithFlag });
 });
+
 
 const makeUserPremium = asyncHandler(async (req, res) => {
   const { premiumType } = req.body;
