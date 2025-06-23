@@ -61,15 +61,17 @@ const createPost = async (req, res) => {
 // Get all posts with pagination and filtering
 const getAllPosts = async (req, res) => {
   try {
+    const userId = req.user?._id; // Make sure auth middleware sets this
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = { isActive: true };
-    
+
     if (req.query.tags) {
       query.tags = { $in: req.query.tags.split(',') };
     }
+
     if (req.query.location) {
       query.location = req.query.location;
     }
@@ -80,20 +82,41 @@ const getAllPosts = async (req, res) => {
       .limit(limit)
       .populate([
         { path: 'creator', select: 'username profilePicture' },
-        { path: 'likes', select: 'username profilePicture' },
-        { path: 'comments.user', select: 'username profilePicture' }
+        { path: 'likes', select: '_id' },
+        { path: 'comments.user', select: '_id' }
       ])
       .lean();
 
     const total = await Post.countDocuments(query);
 
+    // Get user's favorites to avoid querying per post
+    const user = await User.findById(userId).select('favorites').lean();
+    const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
+
+    // Add isLike, isComment, isFavorite to each post
+    const enrichedPosts = posts.map(post => {
+      const postIdStr = post._id.toString();
+
+      const isLike = post.likes.some(likeUser => likeUser._id.toString() === userId.toString());
+      const isComment = post.comments.some(comment => comment.user?._id?.toString() === userId.toString());
+      const isFavorite = favoritePostIds.includes(postIdStr);
+
+      return {
+        ...post,
+        isLike,
+        isComment,
+        isFavorite
+      };
+    });
+
     res.json({
-      posts,
+      posts: enrichedPosts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       totalPosts: total
     });
   } catch (error) {
+    console.error('Error fetching posts:', error);
     res.status(500).json({ message: error.message });
   }
 };
