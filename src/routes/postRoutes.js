@@ -12,29 +12,29 @@ const {
   addComment,
   getUserPosts
 } = require('../controllers/postController');
+const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
 // Create a new post
 router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
 
-// Get all posts with pagination and filtering
 router.get('/', auth, getAllPosts);
 
-// Get a single post by ID
 router.get('/:id', auth, getPostById);
 
-// Update a post
+
 router.patch('/:id', auth, uploadMultiple('media', 5), handleUploadError, updatePost);
 
-// Delete a post (soft delete)
+
 router.delete('/:id', auth, deletePost);
 
-// Like/Unlike a post
 router.post('/:id/like', auth, toggleLike);
 
-// Add a comment to a post
 router.post('/:id/comment', auth, addComment);
 
-// Get user's posts
 router.get('/user/:userId', getUserPosts);
+
+router.post('/favorite/:postId', auth, toggleFavoritePost);
+
+router.get('/favorites', auth, getFavoritePosts);
 
 module.exports = router; 

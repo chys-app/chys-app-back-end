@@ -170,7 +170,89 @@ const getUserNotifications = asyncHandler(async (req, res) => {
     notifications,
   });
 });
+const toggleFavoritePost = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const postId = req.params.postId;
 
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    return res.status(400).json({ message: 'Invalid post ID' });
+  }
+
+  const isFavorited = user.favorites.includes(postId);
+
+  if (isFavorited) {
+    // Remove from favorites
+    user.favorites.pull(postId);
+    await user.save();
+    return res.json({ success: true, message: 'Post removed from favorites' });
+  } else {
+    // Add to favorites
+    user.favorites.push(postId);
+    await user.save();
+    return res.json({ success: true, message: 'Post added to favorites' });
+  }
+});
+const getFavoritePosts = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).populate({
+    path: 'favorites',
+    populate: { path: 'creator', select: 'name image' } // optional user info
+  });
+
+  res.json({ success: true, favorites: user.favorites });
+});
+
+const makeUserPremium = asyncHandler(async (req, res) => {
+  const { premiumType } = req.body;
+  const userId = req.user._id; // Comes from auth middleware
+
+  if (!premiumType) {
+    return res.status(400).json({ message: 'premiumType is required' });
+  }
+
+  const validPlans = ['daily', 'weekly', 'monthly', 'yearly'];
+  if (!validPlans.includes(premiumType)) {
+    return res.status(400).json({ message: 'Invalid premiumType. Choose from: daily, weekly, monthly, yearly.' });
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const now = new Date();
+  let expiryDate;
+
+  switch (premiumType) {
+    case 'daily':
+      expiryDate = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
+      break;
+    case 'weekly':
+      expiryDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      break;
+    case 'monthly':
+      expiryDate = new Date(now.setMonth(now.getMonth() + 1));
+      break;
+    case 'yearly':
+      expiryDate = new Date(now.setFullYear(now.getFullYear() + 1));
+      break;
+  }
+
+  user.isPremium = true;
+  user.premiumType = premiumType;
+  user.premiumExpiry = expiryDate;
+
+  await user.save();
+
+  res.status(200).json({
+    message: 'User upgraded to premium successfully',
+    user: {
+      _id: user._id,
+      isPremium: user.isPremium,
+      premiumType: user.premiumType,
+      premiumExpiry: user.premiumExpiry
+    }
+  });
+});
 
 module.exports = {
   register,
@@ -178,5 +260,8 @@ module.exports = {
   getProfile,
   getAllUsersBasic,
   updateUserProfile,
-  getUserNotifications
+  getUserNotifications,
+  toggleFavoritePost,
+  getFavoritePosts,
+  makeUserPremium
 }; 

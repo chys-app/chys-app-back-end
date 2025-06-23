@@ -65,21 +65,36 @@ const userSchema = new mongoose.Schema({
     unique: true,
     required: false
   },
-  profilePic:{
-    type:String,
-    default: ""
-  },
-  bio:{
+  profilePic: {
     type: String,
     default: ""
+  },
+  bio: {
+    type: String,
+    default: ""
+  },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+
+  // ✅ Premium Fields
+  isPremium: {
+    type: Boolean,
+    default: false
+  },
+  premiumType: {
+    type: String,
+    enum: ['daily', 'weekly', 'monthly', 'yearly'],
+    default: null
+  },
+  premiumExpiry: {
+    type: Date,
+    default: null
   }
+
 }, {
   timestamps: true
 });
 
-
 userSchema.index({ location: '2dsphere' });
-
 
 userSchema.pre('save', async function (next) {
   try {
@@ -121,9 +136,7 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-
-
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
