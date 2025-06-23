@@ -196,6 +196,7 @@ const toggleFavoritePost = asyncHandler(async (req, res) => {
 });
 
 const getFavoritePosts = asyncHandler(async (req, res) => {
+  console.log("here")
   const user = await User.findById(req.user._id).populate({
     path: 'favorites',
     populate: { path: 'creator', select: 'name image' } // optional user info

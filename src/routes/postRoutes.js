@@ -14,6 +14,10 @@ const {
 } = require('../controllers/postController');
 const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
+
+router.get('/getFavorite', auth, getFavoritePosts);
+router.post('/favorite/:postId', auth, toggleFavoritePost);
+
 // Create a new post
 router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
 
@@ -33,8 +37,6 @@ router.post('/:id/comment', auth, addComment);
 
 router.get('/user/:userId', getUserPosts);
 
-router.post('/favorite/:postId', auth, toggleFavoritePost);
 
-router.get('/favorites', auth, getFavoritePosts);
 
 module.exports = router; 
