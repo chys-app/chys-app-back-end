@@ -83,7 +83,7 @@ const userSchema = new mongoose.Schema({
   premiumType: {
     type: String,
     enum: ['daily', 'weekly', 'monthly', 'yearly'],
-    default: null
+    set: value => (value === 'null' ? null : value)
   },
   premiumExpiry: {
     type: Date,
