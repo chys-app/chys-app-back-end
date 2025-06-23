@@ -2,7 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler  = require('express-async-handler');
 const PetProfile = require('../models/PetProfile');
-
+const Notification = require('../models/Notification')
 // Register new user
 const register = async (req, res) => {
   try {
@@ -170,6 +170,7 @@ const getUserNotifications = asyncHandler(async (req, res) => {
     notifications,
   });
 });
+
 const toggleFavoritePost = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   const postId = req.params.postId;
