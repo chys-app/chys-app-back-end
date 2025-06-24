@@ -8,11 +8,16 @@ exports.createDonation = async (req, res) => {
     if (!title || !description || !targetAmount) {
       return res.status(400).json({ message: 'All fields are required.' });
     }
+    let imageUrl = '';
+    if (req.file && req.file.path) {
+      imageUrl = req.file.path;
+    }
     const donation = new Donation({
       title,
       description,
       targetAmount,
-      createdBy: req.admin._id
+      createdBy: req.admin._id,
+      image: imageUrl
     });
     await donation.save();
     res.status(201).json({ message: 'Donation campaign created.', donation });
@@ -62,6 +67,9 @@ exports.updateDonation = async (req, res) => {
     if (description) donation.description = description;
     if (targetAmount) donation.targetAmount = targetAmount;
     if (typeof isActive === 'boolean') donation.isActive = isActive;
+    if (req.file && req.file.path) {
+      donation.image = req.file.path;
+    }
     await donation.save();
     res.status(200).json({ message: 'Donation campaign updated.', donation });
   } catch (err) {
