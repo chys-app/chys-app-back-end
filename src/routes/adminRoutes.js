@@ -8,6 +8,8 @@ const { upload } = require('../config/cloudinary');
 
 router.post('/signup', adminSignup);
 router.post('/login', adminLogin);
+router.get('/dashboardDetails', adminAuth, donationController.getDashboardStats)
+
 
 router.get('/',adminAuth, donationController.getAllDonations);
 router.get('/:id',adminAuth ,donationController.getDonationById);
