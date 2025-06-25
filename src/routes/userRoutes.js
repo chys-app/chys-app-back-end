@@ -3,6 +3,7 @@ const router = express.Router();
 const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
+const donationController = require('../controllers/donationController');
 
 // Public routes
 router.post('/register', upload.single('profilePic'), register);
@@ -18,5 +19,6 @@ router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);
 router.get('/notifications', auth, getUserNotifications)
 
 router.post('/premiumUser', auth, makeUserPremium)
-
+router.get('/getDonations',auth, donationController.getAllDonations);
+router.post('/updateAmount', auth, donationController.recordDonationTransaction)
 module.exports = router; 

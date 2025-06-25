@@ -1,5 +1,6 @@
 const Donation = require('../models/Donation');
 const Admin = require('../models/Admin');
+const DonationTransaction = require('../models/DonationTransaction');
 
 // Create a new donation campaign (admin only)
 exports.createDonation = async (req, res) => {
@@ -95,3 +96,41 @@ exports.deleteDonation = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 }; 
+
+exports.recordDonationTransaction = async (req, res) => {
+  try {
+    const { donationId, amount } = req.body;
+    const userId = req.user._id; // Assuming `req.user` is populated via auth middleware
+
+    // Validation
+    if (!donationId || !amount) {
+      return res.status(400).json({ message: 'Donation ID and amount are required.' });
+    }
+
+    const donation = await Donation.findById(donationId);
+    if (!donation || !donation.isActive) {
+      return res.status(404).json({ message: 'Donation campaign not found or inactive.' });
+    }
+
+    const transaction = new DonationTransaction({
+      donationId,
+      userId,
+      amount,
+      status: 'completed' // Assuming success by default
+    });
+
+    await transaction.save();
+
+    // Step 3: Update collected amount on the donation campaign
+    donation.collectedAmount += amount;
+    await donation.save();
+
+    res.status(201).json({
+      message: 'Donation recorded successfully.',
+      transaction,
+      updatedCollectedAmount: donation.collectedAmount
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
