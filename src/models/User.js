@@ -88,6 +88,20 @@ const userSchema = new mongoose.Schema({
   premiumExpiry: {
     type: Date,
     default: null
+  },
+
+  // ✅ Embedded Bank Details
+  bankDetails: {
+    accountHolderName: { type: String, trim: true },
+    routingNumber: { type: String, trim: true },
+    accountNumber: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    accountType: {
+      type: String,
+      enum: ['checking', 'savings'],
+      lowercase: true
+    },
+    bankAddress: { type: String, trim: true }
   }
 
 }, {
