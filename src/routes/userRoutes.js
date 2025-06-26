@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
@@ -21,5 +21,6 @@ router.post('/premiumUser', auth, makeUserPremium);
 router.get('/getDonations',auth, donationController.getAllDonations);
 router.post('/updateAmount', auth, donationController.recordDonationTransaction);
 router.put('/bank-details', auth, updateBankDetails);
+router.post('/withdraw', auth, requestWithdraw);
 
 module.exports = router; 

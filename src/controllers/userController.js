@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const asyncHandler  = require('express-async-handler');
 const PetProfile = require('../models/PetProfile');
 const Notification = require('../models/Notification')
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
+const WithdrawRequest = require('../models/WithdrawRequest');
 // Register new user
 const register = async (req, res) => {
   try {
@@ -302,6 +303,41 @@ const updateBankDetails = async (req, res) => {
   }
 };
 
+const requestWithdraw = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user || user.totalFundReceived < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    const pending = await WithdrawRequest.findOne({ user: userId, status: 'pending' });
+    if (pending) {
+      return res.status(400).json({ message: "You already have a pending request" });
+    }
+
+    // Create request
+    const withdraw = new WithdrawRequest({
+      user: userId,
+      amount
+    });
+
+    await withdraw.save();
+
+    res.status(200).json({ message: "Withdrawal request submitted" });
+  } catch (error) {
+    console.error("Withdraw error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -312,5 +348,6 @@ module.exports = {
   toggleFavoritePost,
   getFavoritePosts,
   makeUserPremium,
-  updateBankDetails
+  updateBankDetails,
+  requestWithdraw
 }; 
