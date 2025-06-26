@@ -14,11 +14,11 @@ const PostSchema = new Schema({
   likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   comments: [CommentSchema],
   viewCount: { type: Number, default: 0 },
-  tags: [{ type: String }], // optional: e.g. ["dog", "funny", "cat"]
-  location: { type: String }, // optional
+  tags: [{ type: String }],
+  location: { type: String }, 
   isActive: { type: Boolean, default: true }
 }, {
-  timestamps: true // adds createdAt and updatedAt automatically
+  timestamps: true 
 });
 
 module.exports = mongoose.model('Post', PostSchema);

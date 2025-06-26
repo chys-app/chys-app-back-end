@@ -59,7 +59,6 @@ const createPost = async (req, res) => {
   }
 };
 
-// Get all posts with pagination and filtering
 const getAllPosts = async (req, res) => {
   try {
     const userId = req.user?._id; // Make sure auth middleware sets this
@@ -84,7 +83,7 @@ const getAllPosts = async (req, res) => {
       .populate([
         { path: 'creator', select: 'username profilePicture' },
         { path: 'likes', select: '_id' },
-        { path: 'comments.user', select: '_id' }
+        { path: 'comments.user', select: '_id name profilePicture' }
       ])
       .lean();
 

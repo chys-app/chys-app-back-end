@@ -90,7 +90,7 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
-  // ✅ Embedded Bank Details
+  
   bankDetails: {
     accountHolderName: { type: String, trim: true },
     routingNumber: { type: String, trim: true },
