@@ -89,8 +89,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-
-  
+  totalFundReceived: {
+    type: Number,
+    default: 0
+  },
   bankDetails: {
     accountHolderName: { type: String, trim: true },
     routingNumber: { type: String, trim: true },

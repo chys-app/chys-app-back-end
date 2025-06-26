@@ -365,6 +365,43 @@ const getUserPosts = async (req, res) => {
   }
 };
 
+const fundPost = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { postId } = req.params;
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount." });
+    }
+
+    const post = await Post.findById(postId).populate('creator');
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found." });
+    }
+
+    // Add fund entry to post
+    post.funds.push({
+      user: userId,
+      amount
+    });
+
+    await post.save();
+
+    // Update creator's total fund
+    await User.findByIdAndUpdate(
+      post.creator._id,
+      { $inc: { totalFundReceived: amount } }
+    );
+
+    res.json({ message: "Fund sent successfully." });
+  } catch (error) {
+    console.error("Error funding post:", error);
+    res.status(500).json({ message: "Server error." });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -373,5 +410,6 @@ module.exports = {
   deletePost,
   toggleLike,
   addComment,
-  getUserPosts
+  getUserPosts,
+  fundPost
 }; 

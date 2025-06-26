@@ -10,7 +10,8 @@ const {
   deletePost,
   toggleLike,
   addComment,
-  getUserPosts
+  getUserPosts,
+  fundPost
 } = require('../controllers/postController');
 const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
@@ -19,6 +20,8 @@ router.get('/getFavorite', auth, getFavoritePosts);
 router.post('/favorite/:postId', auth, toggleFavoritePost);
 
 // Create a new post
+router.post('/fundRaise/:postId', auth, fundPost)
+
 router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
 
 router.get('/', auth, getAllPosts);
