@@ -1,4 +1,5 @@
 const Admin = require('../models/Admin');
+const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -44,6 +45,124 @@ exports.adminLogin = async (req, res) => {
       { expiresIn: '7d' }
     );
     return res.status(200).json({ message: 'Login successful', token });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Get all users (with limited information for main screen)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const skip = (page - 1) * limit;
+
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { numericUid: isNaN(search) ? null : parseInt(search) }
+        ]
+      };
+    }
+
+    const users = await User.find(query)
+      .select('name email numericUid profilePic role isPremium premiumType premiumExpiry createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const totalUsers = await User.countDocuments(query);
+
+    return res.status(200).json({
+      users,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalUsers / limit),
+        totalUsers,
+        hasNext: skip + users.length < totalUsers,
+        hasPrev: page > 1
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Get user by ID (detailed information)
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(id)
+      .select('-password'); // Exclude password from response
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ user });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Update user
+exports.updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Remove sensitive fields that shouldn't be updated directly
+    delete updateData.password;
+    delete updateData.numericUid;
+    delete updateData._id;
+
+    // If updating password, hash it
+    if (updateData.newPassword) {
+      updateData.password = await bcrypt.hash(updateData.newPassword, 10);
+      delete updateData.newPassword;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ 
+      message: 'User updated successfully', 
+      user 
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// Delete user
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findByIdAndDelete(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ 
+      message: 'User deleted successfully',
+      deletedUser: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
   } catch (err) {
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
