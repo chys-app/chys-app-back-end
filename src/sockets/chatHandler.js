@@ -37,36 +37,36 @@ const chatHandler = (io) => {
     console.log(`✅ User ${userId} connected via socket ${socket.id}`);
     connectedUsers.set(userId, socket.id);
 
-    socket.on('private_message', async ({ receiverId, message }) => {
+    socket.on('private_message', async ({ receiverId, message, media }) => {
       try {
         const newMessage = await Message.create({
           senderId: userId,
           receiverId,
-          message
+          message,
+          media
         });
     
         const messagePayload = {
+          _id: newMessage._id,
           senderId: userId,
           receiverId,
-          message,
+          message: newMessage.message,
+          media: newMessage.media,
           timestamp: newMessage.timestamp
         };
     
-        // Emit to sender
         socket.emit('receive_message', messagePayload);
     
-        // Emit to receiver if online
         const receiverSocketId = connectedUsers.get(receiverId);
         if (receiverSocketId) {
           io.to(receiverSocketId).emit('receive_message', messagePayload);
         }
     
-        // 🔔 Send notification (whether online or offline)
         if (receiverId !== userId) {
           await sendNotification({
             userIds: receiverId,
             title: 'New Message 📩',
-            message: `${socket.user.name} sent you a message.`,
+            message: media ? `${socket.user.name} sent a media file.` : `${socket.user.name} sent you a message.`,
             type: 'MESSAGE',
             data: {
               senderId: userId,

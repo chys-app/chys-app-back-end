@@ -15,6 +15,11 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  media: {
+    url: { type: String },
+    type: { type: String }, // image, video, etc.
+    public_id: { type: String }
+  },
   timestamp: {
     type: Date,
     default: Date.now,

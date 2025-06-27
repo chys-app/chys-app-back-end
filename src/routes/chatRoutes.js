@@ -73,4 +73,22 @@ router.get('/get/users', auth, async (req, res) => {
     }
   });
 
+
+const { upload } = require('../config/cloudinary');
+
+router.post('/upload-media', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'No file uploaded' });
+  }
+
+  const { path, filename, mimetype } = req.file;
+
+  return res.status(200).json({
+    url: path,
+    public_id: filename,
+    type: mimetype.startsWith('image/') ? 'image' : 'video',
+  });
+});
+
+module.exports = router;
 module.exports = router;
