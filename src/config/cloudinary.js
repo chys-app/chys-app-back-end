@@ -28,7 +28,7 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 5 // Maximum 5 files
+    files: 6 // Maximum 5 files
   },
   fileFilter: (req, file, cb) => {
     // Accept images and videos
