@@ -15,7 +15,6 @@ const uploadMultiple = (fieldName, maxCount = 5) => {
   return upload.array(fieldName, maxCount);
 };
 
-// Error handling middleware for file uploads
 const handleUploadError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {

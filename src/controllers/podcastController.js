@@ -237,16 +237,12 @@ exports.endPodcast = asyncHandler(async (req, res) => {
       return res.status(500).json({ message: 'Failed to retrieve host numeric UID' });
     }
 
-    // Optional wait before stopping to ensure recording stabilizes
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // const { recordingUrl, raw } = await stopRecording(
+    //   podcast._id.toString(),
+    //   podcast.agoraChannel,
+    //   hostUser.numericUid
+    // );
 
-    const { recordingUrl, raw } = await stopRecording(
-      podcast._id.toString(),
-      podcast.agoraChannel,
-      hostUser.numericUid
-    );
-
-    console.log('[Controller] Recording stopped. Raw response:', raw);
 
     podcast.status = 'ended';
     podcast.recordingUrl = recordingUrl || null;
