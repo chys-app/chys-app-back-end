@@ -411,6 +411,8 @@ const fundItem = async (req, res) => {
     return res.status(500).json({ message: "Server error." });
   }
 };
+
+
 const getAllFunds = async (req, res) => {
   try {
     const { type, id } = req.params;
@@ -435,12 +437,18 @@ const getAllFunds = async (req, res) => {
       return res.status(404).json({ message: `${type} not found.` });
     }
 
-    res.status(200).json({ funds: item.funds });
+    const totalAmount = item.funds.reduce((sum, fund) => sum + fund.amount, 0);
+
+    res.status(200).json({
+      totalAmount,
+      funds: item.funds
+    });
   } catch (error) {
     console.error("Error getting funds:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
+
 
 module.exports = {
   createPost,
