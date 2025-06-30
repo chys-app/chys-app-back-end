@@ -11,7 +11,8 @@ const {
   toggleLike,
   addComment,
   getUserPosts,
-  fundPost
+  fundItem,
+  getAllFunds
 } = require('../controllers/postController');
 const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
@@ -20,8 +21,8 @@ router.get('/getFavorite', auth, getFavoritePosts);
 router.post('/favorite/:postId', auth, toggleFavoritePost);
 
 // Create a new post
-router.post('/fundRaise/:postId', auth, fundPost)
-
+router.post('/fundRaise/:type/:id', auth, fundItem)
+router.get('/fund/:type/:id', auth, getAllFunds);
 router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
 
 router.get('/', auth, getAllPosts);

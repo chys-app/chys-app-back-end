@@ -1,4 +1,5 @@
 const Post = require('../models/Post');
+const Podcast = require('../models/Podcast')
 const { cloudinary } = require('../config/cloudinary');
 const { sendNotification } = require('../utils/notificationUtil');
 const User = require('../models/User');
@@ -365,39 +366,78 @@ const getUserPosts = async (req, res) => {
   }
 };
 
-const fundPost = async (req, res) => {
+const fundItem = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { postId } = req.params;
+    const { type, id } = req.params;
     const { amount } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Invalid amount." });
     }
 
-    const post = await Post.findById(postId).populate('creator');
+    let Model, creatorField;
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found." });
+    if (type === 'post') {
+      Model = Post;
+      creatorField = 'creator';
+    } else if (type === 'podcast') {
+      Model = Podcast;
+      creatorField = 'host';
+    } else {
+      return res.status(400).json({ message: "Invalid type. Must be 'post' or 'podcast'." });
     }
 
-    // Add fund entry to post
-    post.funds.push({
+    const item = await Model.findById(id).populate(creatorField);
+    if (!item) {
+      return res.status(404).json({ message: `${type} not found.` });
+    }
+
+    item.funds.push({
       user: userId,
       amount
     });
 
-    await post.save();
+    await item.save();
 
-    // Update creator's total fund
     await User.findByIdAndUpdate(
-      post.creator._id,
+      item[creatorField]._id,
       { $inc: { totalFundReceived: amount } }
     );
 
-    res.json({ message: "Fund sent successfully." });
+    return res.status(200).json({ message: `Fund sent successfully to the ${type}.` });
+  } catch (err) {
+    console.error("Error funding item:", err);
+    return res.status(500).json({ message: "Server error." });
+  }
+};
+const getAllFunds = async (req, res) => {
+  try {
+    const { type, id } = req.params;
+
+    let Model;
+    if (type === 'post') {
+      Model = Post;
+    } else if (type === 'podcast') {
+      Model = Podcast;
+    } else {
+      return res.status(400).json({ message: "Invalid type. Must be 'post' or 'podcast'." });
+    }
+
+    const item = await Model.findById(id)
+      .populate({
+        path: 'funds.user',
+        select: 'name email profileImage' // optional fields from User
+      })
+      .select('funds');
+
+    if (!item) {
+      return res.status(404).json({ message: `${type} not found.` });
+    }
+
+    res.status(200).json({ funds: item.funds });
   } catch (error) {
-    console.error("Error funding post:", error);
+    console.error("Error getting funds:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
@@ -411,5 +451,6 @@ module.exports = {
   toggleLike,
   addComment,
   getUserPosts,
-  fundPost
+  fundItem,
+  getAllFunds
 }; 
