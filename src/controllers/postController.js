@@ -82,7 +82,7 @@ const getAllPosts = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .populate([
-        { path: 'creator', select: 'username profilePicture' },
+        { path: 'creator', select: 'name bio profilePic' },
         { path: 'likes', select: '_id' },
         { path: 'comments.user', select: '_id name profilePic' }
       ])
