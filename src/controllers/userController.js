@@ -5,6 +5,9 @@ const PetProfile = require('../models/PetProfile');
 const Notification = require('../models/Notification')
 const mongoose = require('mongoose');
 const WithdrawRequest = require('../models/WithdrawRequest');
+const DonationTransaction = require('../models/DonationTransaction');
+const Podcast = require('../models/Podcast');
+const Post = require('../models/Post');
 // Register new user
 const register = async (req, res) => {
   try {
@@ -338,6 +341,81 @@ const requestWithdraw = async (req, res) => {
   }
 };
 
+
+const getTransactionHistory = asyncHandler(async (req, res) => {
+  const userId = req.user.id; // Assuming req.user is populated via auth middleware
+
+  // 1. Donations
+  const donations = await DonationTransaction.find({ userId })
+    .select('amount donatedAt status')
+    .lean();
+
+  const donationHistory = donations.map(d => ({
+    type: 'donation',
+    amount: d.amount,
+    status: d.status,
+    date: d.donatedAt,
+  }));
+
+  // 2. Podcast funds
+  const podcastFunds = await Podcast.find({ 'funds.user': userId })
+    .select('funds title')
+    .lean();
+
+  const podcastHistory = podcastFunds.flatMap(podcast =>
+    podcast.funds
+      .filter(f => f.user.toString() === userId)
+      .map(f => ({
+        type: 'podcast_fund',
+        amount: f.amount,
+        date: f.createdAt,
+        podcastTitle: podcast.title,
+      }))
+  );
+
+  // 3. Post funds
+  const postFunds = await Post.find({ 'funds.user': userId })
+    .select('funds description')
+    .lean();
+
+  const postHistory = postFunds.flatMap(post =>
+    post.funds
+      .filter(f => f.user.toString() === userId)
+      .map(f => ({
+        type: 'post_fund',
+        amount: f.amount,
+        date: f.createdAt,
+        postDescription: post.description,
+      }))
+  );
+
+  // 4. Withdrawals
+  const withdrawals = await WithdrawRequest.find({ user: userId })
+    .select('amount status requestedAt paidAt')
+    .lean();
+
+  const withdrawalHistory = withdrawals.map(w => ({
+    type: 'withdrawal',
+    amount: w.amount,
+    status: w.status,
+    date: w.paidAt || w.requestedAt,
+  }));
+
+  // Combine all and sort by date descending
+  const allHistory = [
+    ...donationHistory,
+    ...podcastHistory,
+    ...postHistory,
+    ...withdrawalHistory
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  res.json({
+    success: true,
+    sentTransactions: [...donationHistory, ...podcastHistory, ...postHistory].sort((a, b) => new Date(b.date) - new Date(a.date)),
+    withdrawals: withdrawalHistory.sort((a, b) => new Date(b.date) - new Date(a.date)),
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -349,5 +427,6 @@ module.exports = {
   getFavoritePosts,
   makeUserPremium,
   updateBankDetails,
-  requestWithdraw
+  requestWithdraw,
+  getTransactionHistory
 }; 

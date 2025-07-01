@@ -4,10 +4,9 @@ const User = require('../models/User');
 const { sendNotification } = require('../utils/notificationUtil');
 
 
-const connectedUsers = new Map(); // userId => socket.id
+const connectedUsers = new Map();
 
 const chatHandler = (io) => {
-  // Authenticate socket connection using JWT
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token;
@@ -23,7 +22,7 @@ const chatHandler = (io) => {
         return next(new Error('Authentication error: User not found'));
       }
 
-      socket.user = user; // Attach user to socket for later use
+      socket.user = user;
       next();
     } catch (err) {
       console.error('Socket authentication error:', err.message);
