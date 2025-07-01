@@ -250,8 +250,7 @@ exports.endPodcast = asyncHandler(async (req, res) => {
     await podcast.save();
 
     res.json({
-      message: 'Podcast ended and recording stopped',
-      recordingUrl,
+      message: 'Podcast ended and recording stopped'
     });
   } catch (err) {
     console.error('[Controller] Stop recording error:', err);
