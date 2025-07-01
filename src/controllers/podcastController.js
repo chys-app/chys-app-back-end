@@ -245,7 +245,7 @@ exports.endPodcast = asyncHandler(async (req, res) => {
 
 
     podcast.status = 'ended';
-    podcast.recordingUrl = null;
+    // podcast.recordingUrl = null;
     podcast.agoraSession = undefined;
     await podcast.save();
 
