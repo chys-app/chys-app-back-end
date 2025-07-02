@@ -77,7 +77,7 @@ const login = async (req, res) => {
   }
 };
 
-exports.sendResetOTP = async (req, res) => {
+const sendResetOTP = async (req, res) => {
   const { email } = req.body;
 
   const user = await User.findOne({ email });
@@ -100,7 +100,7 @@ exports.sendResetOTP = async (req, res) => {
   res.json({ message: 'OTP sent to email' });
 };
 
-exports.verifyResetOTP = async (req, res) => {
+const verifyResetOTP = async (req, res) => {
   const { email, otp } = req.body;
 
   const user = await User.findOne({
@@ -119,7 +119,7 @@ exports.verifyResetOTP = async (req, res) => {
   res.json({ message: 'OTP verified successfully' });
 };
 
-exports.resetPasswordAfterOTP = async (req, res) => {
+const resetPasswordAfterOTP = async (req, res) => {
   const { email, newPassword } = req.body;
 
   const user = await User.findOne({ email });
@@ -490,5 +490,8 @@ module.exports = {
   makeUserPremium,
   updateBankDetails,
   requestWithdraw,
-  getTransactionHistory
+  getTransactionHistory,
+  sendResetOTP,
+  verifyResetOTP,
+  resetPasswordAfterOTP
 }; 
