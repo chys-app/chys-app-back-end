@@ -1,15 +1,17 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler  = require('express-async-handler');
+const mongoose = require('mongoose');
+
 const PetProfile = require('../models/PetProfile');
 const Notification = require('../models/Notification')
-const mongoose = require('mongoose');
 const WithdrawRequest = require('../models/WithdrawRequest');
 const DonationTransaction = require('../models/DonationTransaction');
 const Podcast = require('../models/Podcast');
 const Post = require('../models/Post');
 const sendEmail = require('../utils/sendEmail');
-// Register new user
+
+
 const register = async (req, res) => {
   try {
     const { name, email, password, lat, lng, fcmToken, bio } = req.body;
@@ -47,7 +49,7 @@ const register = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-// Login user
+
 const login = async (req, res) => {
   try {
     const { email, password ,lat, lng, fcmToken} = req.body;
@@ -85,7 +87,7 @@ const sendResetOTP = async (req, res) => {
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
-  const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  const expires = Date.now() + 10 * 60 * 1000; 
 
   user.resetPasswordOTP = otp;
   user.resetPasswordOTPExpires = new Date(expires);

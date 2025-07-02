@@ -344,9 +344,9 @@ const getUserPosts = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .populate([
-        { path: 'creator', select: 'username profilePicture' },
-        { path: 'likes', select: 'username profilePicture' },
-        { path: 'comments.user', select: 'username profilePicture' }
+        { path: 'creator', select: 'name profilePic bio' },
+        { path: 'likes', select: 'name profilePic' },
+        { path: 'comments.user', select: 'name profilePic' }
       ])
       .lean();
 
