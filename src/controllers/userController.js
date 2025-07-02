@@ -77,6 +77,68 @@ const login = async (req, res) => {
   }
 };
 
+exports.sendResetOTP = async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+  const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  user.resetPasswordOTP = otp;
+  user.resetPasswordOTPExpires = new Date(expires);
+  user.resetPasswordOTPVerified = false;
+  await user.save();
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Reset Password OTP',
+    html: `<p>Your OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`
+  });
+
+  res.json({ message: 'OTP sent to email' });
+};
+
+exports.verifyResetOTP = async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({
+    email,
+    resetPasswordOTP: otp,
+    resetPasswordOTPExpires: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired OTP' });
+  }
+
+  user.resetPasswordOTPVerified = true;
+  await user.save();
+
+  res.json({ message: 'OTP verified successfully' });
+};
+
+exports.resetPasswordAfterOTP = async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user || !user.resetPasswordOTPVerified) {
+    return res.status(400).json({ message: 'OTP not verified' });
+  }
+
+  user.password = newPassword;
+  user.resetPasswordOTP = undefined;
+  user.resetPasswordOTPExpires = undefined;
+  user.resetPasswordOTPVerified = false;
+
+  await user.save();
+
+  res.json({ message: 'Password reset successfully' });
+};
+
+
 // Get user profile
 const getProfile = async (req, res) => {
   try {

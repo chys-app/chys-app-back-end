@@ -89,9 +89,21 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  resetPasswordOTP: {
+    type: String,
+    default: null
+  },
+  resetPasswordOTPExpires: {
+    type: Date,
+    default: null
+  },
   totalFundReceived: {
     type: Number,
     default: 0
+  },
+  resetPasswordOTPVerified: {
+    type: Boolean,
+    default: false
   },
   bankDetails: {
     accountHolderName: { type: String, trim: true },
