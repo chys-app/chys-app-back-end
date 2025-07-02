@@ -8,6 +8,7 @@ const WithdrawRequest = require('../models/WithdrawRequest');
 const DonationTransaction = require('../models/DonationTransaction');
 const Podcast = require('../models/Podcast');
 const Post = require('../models/Post');
+const sendEmail = require('../utils/sendEmail');
 // Register new user
 const register = async (req, res) => {
   try {
