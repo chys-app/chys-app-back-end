@@ -37,7 +37,7 @@ router.patch('/:id', auth, uploadMultiple('media', 10), handleUploadError, updat
 router.delete('/:id', auth, deletePost);
 
 router.post('/:id/like', auth, toggleLike);
-router.post('/:id/view', auth, recordView);
+router.post('/:postId/view', auth, recordView);
 router.post('/:id/comment', auth, addComment);
 
 

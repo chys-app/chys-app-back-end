@@ -147,7 +147,9 @@ const recordView = async (req, res) => {
 
     const post = await Post.findById(postId);
 
-    if (!post) return res.status(404).json({ message: 'Post not found' });
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
 
     const alreadyViewed = post.viewedBy.some(
       viewerId => viewerId.toString() === userId.toString()
@@ -159,12 +161,22 @@ const recordView = async (req, res) => {
       await post.save();
     }
 
-    res.json({ message: 'View recorded' });
+    res.json({
+      success: true,
+      message: alreadyViewed ? 'Already viewed' : 'View recorded',
+      postId,
+      viewCount: post.viewCount,
+      alreadyViewed,
+    });
   } catch (err) {
     console.error('Error recording view:', err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
   }
 };
+
 
 // Get a single post by ID
 const getPostById = async (req, res) => {
