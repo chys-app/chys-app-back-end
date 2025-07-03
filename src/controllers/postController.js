@@ -1,33 +1,35 @@
-const Post = require('../models/Post');
-const Podcast = require('../models/Podcast')
-const { cloudinary } = require('../config/cloudinary');
-const { sendNotification } = require('../utils/notificationUtil');
-const User = require('../models/User');
+const Post = require("../models/Post");
+const Podcast = require("../models/Podcast");
+const { cloudinary } = require("../config/cloudinary");
+const { sendNotification } = require("../utils/notificationUtil");
+const User = require("../models/User");
 
 // Create a new post
 const createPost = async (req, res) => {
   try {
     const { description, tags, location } = req.body;
-    
+
     // Handle media uploads
     const media = [];
     if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         media.push(file.path);
       });
     }
 
     if (media.length === 0) {
-      return res.status(400).json({ message: 'At least one media file is required' });
+      return res
+        .status(400)
+        .json({ message: "At least one media file is required" });
     }
 
     // Parse tags if they exist and are in string format
     let parsedTags = [];
     if (tags) {
       try {
-        parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
+        parsedTags = typeof tags === "string" ? JSON.parse(tags) : tags;
       } catch (error) {
-        parsedTags = tags.split(',').map(tag => tag.trim());
+        parsedTags = tags.split(",").map((tag) => tag.trim());
       }
     }
 
@@ -36,23 +38,23 @@ const createPost = async (req, res) => {
       media,
       creator: req.user._id,
       ...(parsedTags.length > 0 && { tags: parsedTags }),
-      ...(location && { location: location.trim() })
+      ...(location && { location: location.trim() }),
     });
 
     await post.save();
-    
+
     // Populate all necessary fields
     await post.populate([
-      { path: 'creator', select: 'username profilePicture' },
-      { path: 'likes', select: 'username profilePicture' },
-      { path: 'comments.user', select: 'username profilePicture' }
+      { path: "creator", select: "username profilePicture" },
+      { path: "likes", select: "username profilePicture" },
+      { path: "comments.user", select: "username profilePicture" },
     ]);
 
     res.status(201).json(post);
   } catch (error) {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const publicId = file.path.split('/').pop().split('.')[0];
+        const publicId = file.path.split("/").pop().split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       }
     }
@@ -70,7 +72,7 @@ const getAllPosts = async (req, res) => {
     const query = { isActive: true };
 
     if (req.query.tags) {
-      query.tags = { $in: req.query.tags.split(',') };
+      query.tags = { $in: req.query.tags.split(",") };
     }
 
     if (req.query.location) {
@@ -82,31 +84,42 @@ const getAllPosts = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .populate([
-        { path: 'creator', select: 'name bio profilePic' },
-        { path: 'likes', select: '_id' },
-        { path: 'comments.user', select: '_id name profilePic' }
+        { path: "creator", select: "name bio profilePic" },
+        { path: "likes", select: "_id" },
+        { path: "comments.user", select: "_id name profilePic" },
       ])
       .lean();
 
     const total = await Post.countDocuments(query);
 
     // Get user's favorites to avoid querying per post
-    const user = await User.findById(userId).select('favorites').lean();
-    const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
+    const user = await User.findById(userId).select("favorites").lean();
+    const favoritePostIds = user?.favorites?.map((fav) => fav.toString()) || [];
 
     // Add isLike, isComment, isFavorite to each post
-    const enrichedPosts = posts.map(post => {
+    const enrichedPosts = posts.map((post) => {
       const postIdStr = post._id.toString();
 
-      const isLike = post.likes.some(likeUser => likeUser._id.toString() === userId.toString());
-      const isComment = post.comments.some(comment => comment.user?._id?.toString() === userId.toString());
+      const isLike = post.likes.some(
+        (likeUser) => likeUser._id.toString() === userId.toString()
+      );
+      const isComment = post.comments.some(
+        (comment) => comment.user?._id?.toString() === userId.toString()
+      );
       const isFavorite = favoritePostIds.includes(postIdStr);
+      const userFund = post.funds?.find(
+        (fund) => fund.user.toString() === userId.toString()
+      );
+      const isFunded = !!userFund;
+      const fundedAmount = userFund?.amount || 0;
 
       return {
         ...post,
         isLike,
         isComment,
-        isFavorite
+        isFavorite,
+        isFunded,
+        fundedAmount
       };
     });
 
@@ -114,10 +127,10 @@ const getAllPosts = async (req, res) => {
       posts: enrichedPosts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-      totalPosts: total
+      totalPosts: total,
     });
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    console.error("Error fetching posts:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -125,15 +138,14 @@ const getAllPosts = async (req, res) => {
 // Get a single post by ID
 const getPostById = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id)
-      .populate([
-        { path: 'creator', select: 'username profilePicture' },
-        { path: 'likes', select: 'username profilePicture' },
-        { path: 'comments.user', select: 'username profilePicture' }
-      ]);
+    const post = await Post.findById(req.params.id).populate([
+      { path: "creator", select: "username profilePicture" },
+      { path: "likes", select: "username profilePicture" },
+      { path: "comments.user", select: "username profilePicture" },
+    ]);
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ message: "Post not found" });
     }
 
     post.viewCount += 1;
@@ -149,17 +161,24 @@ const getPostById = async (req, res) => {
 const updatePost = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ['description', 'tags', 'location'];
-    const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+    const allowedUpdates = ["description", "tags", "location"];
+    const isValidOperation = updates.every((update) =>
+      allowedUpdates.includes(update)
+    );
 
     if (!isValidOperation) {
-      return res.status(400).json({ message: 'Invalid updates' });
+      return res.status(400).json({ message: "Invalid updates" });
     }
 
-    const post = await Post.findOne({ _id: req.params.id, creator: req.user._id });
-    
+    const post = await Post.findOne({
+      _id: req.params.id,
+      creator: req.user._id,
+    });
+
     if (!post) {
-      return res.status(404).json({ message: 'Post not found or unauthorized' });
+      return res
+        .status(404)
+        .json({ message: "Post not found or unauthorized" });
     }
 
     // Handle media updates if new files are uploaded
@@ -167,26 +186,27 @@ const updatePost = async (req, res) => {
       // Delete old media files from Cloudinary
       for (const mediaUrl of post.media) {
         try {
-          const publicId = mediaUrl.split('/').pop().split('.')[0];
+          const publicId = mediaUrl.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.error('Error deleting old media:', error);
+          console.error("Error deleting old media:", error);
         }
       }
 
       // Add new media files
-      post.media = req.files.map(file => file.path);
+      post.media = req.files.map((file) => file.path);
     }
 
     // Update other fields
-    updates.forEach(update => {
-      if (update === 'tags') {
+    updates.forEach((update) => {
+      if (update === "tags") {
         try {
-          post[update] = typeof req.body[update] === 'string' 
-            ? JSON.parse(req.body[update]) 
-            : req.body[update];
+          post[update] =
+            typeof req.body[update] === "string"
+              ? JSON.parse(req.body[update])
+              : req.body[update];
         } catch (error) {
-          post[update] = req.body[update].split(',').map(tag => tag.trim());
+          post[update] = req.body[update].split(",").map((tag) => tag.trim());
         }
       } else {
         post[update] = req.body[update].trim();
@@ -194,12 +214,12 @@ const updatePost = async (req, res) => {
     });
 
     await post.save();
-    
+
     // Populate all necessary fields
     await post.populate([
-      { path: 'creator', select: 'username profilePicture' },
-      { path: 'likes', select: 'username profilePicture' },
-      { path: 'comments.user', select: 'username profilePicture' }
+      { path: "creator", select: "username profilePicture" },
+      { path: "likes", select: "username profilePicture" },
+      { path: "comments.user", select: "username profilePicture" },
     ]);
 
     res.json(post);
@@ -207,10 +227,10 @@ const updatePost = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         try {
-          const publicId = file.path.split('/').pop().split('.')[0];
+          const publicId = file.path.split("/").pop().split(".")[0];
           await cloudinary.uploader.destroy(publicId);
         } catch (error) {
-          console.error('Error cleaning up uploaded files:', error);
+          console.error("Error cleaning up uploaded files:", error);
         }
       }
     }
@@ -221,16 +241,21 @@ const updatePost = async (req, res) => {
 // Delete a post (soft delete)
 const deletePost = async (req, res) => {
   try {
-    const post = await Post.findOne({ _id: req.params.id, creator: req.user._id });
-    
+    const post = await Post.findOne({
+      _id: req.params.id,
+      creator: req.user._id,
+    });
+
     if (!post) {
-      return res.status(404).json({ message: 'Post not found or unauthorized' });
+      return res
+        .status(404)
+        .json({ message: "Post not found or unauthorized" });
     }
 
     post.isActive = false;
     await post.save();
 
-    res.json({ message: 'Post deleted successfully' });
+    res.json({ message: "Post deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -239,10 +264,10 @@ const deletePost = async (req, res) => {
 // Like/Unlike a post
 const toggleLike = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id).populate('creator');
+    const post = await Post.findById(req.params.id).populate("creator");
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ message: "Post not found" });
     }
 
     const likeIndex = post.likes.indexOf(req.user._id);
@@ -258,21 +283,21 @@ const toggleLike = async (req, res) => {
     await post.save();
 
     await post.populate([
-      { path: 'creator', select: 'username profilePicture' },
-      { path: 'likes', select: 'username profilePicture' },
-      { path: 'comments.user', select: 'username profilePicture' }
+      { path: "creator", select: "username profilePicture" },
+      { path: "likes", select: "username profilePicture" },
+      { path: "comments.user", select: "username profilePicture" },
     ]);
 
     // 🔔 Notify post creator
     if (liked && post.creator._id.toString() !== req.user._id.toString()) {
       await sendNotification({
         userIds: post.creator._id,
-        title: 'New Like ❤️',
+        title: "New Like ❤️",
         message: `${req.user.name} liked your post.`,
-        type: 'LIKE',
+        type: "LIKE",
         data: {
-          postId: post._id.toString()
-        }
+          postId: post._id.toString(),
+        },
       });
     }
 
@@ -287,38 +312,38 @@ const addComment = async (req, res) => {
     const { message } = req.body;
 
     if (!message) {
-      return res.status(400).json({ message: 'Comment message is required' });
+      return res.status(400).json({ message: "Comment message is required" });
     }
 
-    const post = await Post.findById(req.params.id).populate('creator');
+    const post = await Post.findById(req.params.id).populate("creator");
 
     if (!post) {
-      return res.status(404).json({ message: 'Post not found' });
+      return res.status(404).json({ message: "Post not found" });
     }
 
     post.comments.push({
       user: req.user._id,
-      message
+      message,
     });
 
     await post.save();
 
     await post.populate([
-      { path: 'creator', select: 'username profilePicture' },
-      { path: 'likes', select: 'username profilePicture' },
-      { path: 'comments.user', select: 'username profilePicture' }
+      { path: "creator", select: "username profilePicture" },
+      { path: "likes", select: "username profilePicture" },
+      { path: "comments.user", select: "username profilePicture" },
     ]);
 
     // 🔔 Notify post creator
     if (post.creator._id.toString() !== req.user._id.toString()) {
       await sendNotification({
         userIds: post.creator._id,
-        title: 'New Comment 💬',
+        title: "New Comment 💬",
         message: `${req.user.name} commented on your post: "${message}"`,
-        type: 'COMMENT',
+        type: "COMMENT",
         data: {
-          postId: post._id.toString()
-        }
+          postId: post._id.toString(),
+        },
       });
     }
 
@@ -328,7 +353,6 @@ const addComment = async (req, res) => {
   }
 };
 
-
 // Get user's posts
 const getUserPosts = async (req, res) => {
   try {
@@ -336,30 +360,30 @@ const getUserPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const posts = await Post.find({ 
+    const posts = await Post.find({
       creator: req.params.userId,
-      isActive: true 
+      isActive: true,
     })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate([
-        { path: 'creator', select: 'name profilePic bio' },
-        { path: 'likes', select: 'name profilePic' },
-        { path: 'comments.user', select: 'name profilePic' }
+        { path: "creator", select: "name profilePic bio" },
+        { path: "likes", select: "name profilePic" },
+        { path: "comments.user", select: "name profilePic" },
       ])
       .lean();
 
-    const total = await Post.countDocuments({ 
+    const total = await Post.countDocuments({
       creator: req.params.userId,
-      isActive: true 
+      isActive: true,
     });
 
     res.json({
       posts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-      totalPosts: total
+      totalPosts: total,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -378,14 +402,16 @@ const fundItem = async (req, res) => {
 
     let Model, creatorField;
 
-    if (type === 'post') {
+    if (type === "post") {
       Model = Post;
-      creatorField = 'creator';
-    } else if (type === 'podcast') {
+      creatorField = "creator";
+    } else if (type === "podcast") {
       Model = Podcast;
-      creatorField = 'host';
+      creatorField = "host";
     } else {
-      return res.status(400).json({ message: "Invalid type. Must be 'post' or 'podcast'." });
+      return res
+        .status(400)
+        .json({ message: "Invalid type. Must be 'post' or 'podcast'." });
     }
 
     const item = await Model.findById(id).populate(creatorField);
@@ -395,43 +421,45 @@ const fundItem = async (req, res) => {
 
     item.funds.push({
       user: userId,
-      amount
+      amount,
     });
 
     await item.save();
 
-    await User.findByIdAndUpdate(
-      item[creatorField]._id,
-      { $inc: { totalFundReceived: amount } }
-    );
+    await User.findByIdAndUpdate(item[creatorField]._id, {
+      $inc: { totalFundReceived: amount },
+    });
 
-    return res.status(200).json({ message: `Fund sent successfully to the ${type}.` });
+    return res
+      .status(200)
+      .json({ message: `Fund sent successfully to the ${type}.` });
   } catch (err) {
     console.error("Error funding item:", err);
     return res.status(500).json({ message: "Server error." });
   }
 };
 
-
 const getAllFunds = async (req, res) => {
   try {
     const { type, id } = req.params;
 
     let Model;
-    if (type === 'post') {
+    if (type === "post") {
       Model = Post;
-    } else if (type === 'podcast') {
+    } else if (type === "podcast") {
       Model = Podcast;
     } else {
-      return res.status(400).json({ message: "Invalid type. Must be 'post' or 'podcast'." });
+      return res
+        .status(400)
+        .json({ message: "Invalid type. Must be 'post' or 'podcast'." });
     }
 
     const item = await Model.findById(id)
       .populate({
-        path: 'funds.user',
-        select: 'name email profileImage' // optional fields from User
+        path: "funds.user",
+        select: "name email profileImage", // optional fields from User
       })
-      .select('funds');
+      .select("funds");
 
     if (!item) {
       return res.status(404).json({ message: `${type} not found.` });
@@ -441,14 +469,13 @@ const getAllFunds = async (req, res) => {
 
     res.status(200).json({
       totalAmount,
-      funds: item.funds
+      funds: item.funds,
     });
   } catch (error) {
     console.error("Error getting funds:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
-
 
 module.exports = {
   createPost,
@@ -460,5 +487,5 @@ module.exports = {
   addComment,
   getUserPosts,
   fundItem,
-  getAllFunds
-}; 
+  getAllFunds,
+};
