@@ -113,6 +113,7 @@ const getAllPosts = async (req, res) => {
       const isFunded = !!userFund;
       const fundedAmount = userFund?.amount || 0;
       const fundCount = post.funds?.length || 0;
+      const isViewed = post.viewedBy?.some(viewer => viewer.toString() === userId.toString());
 
       return {
         ...post,
@@ -121,7 +122,8 @@ const getAllPosts = async (req, res) => {
         isFavorite,
         isFunded,
         fundedAmount,
-        fundCount
+        fundCount,
+        isViewed
       };
     });
 
@@ -134,6 +136,33 @@ const getAllPosts = async (req, res) => {
   } catch (error) {
     console.error("Error fetching posts:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+const recordView = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const post = await Post.findById(postId);
+
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+
+    const alreadyViewed = post.viewedBy.some(
+      viewerId => viewerId.toString() === userId.toString()
+    );
+
+    if (!alreadyViewed) {
+      post.viewedBy.push(userId);
+      post.viewCount += 1;
+      await post.save();
+    }
+
+    res.json({ message: 'View recorded' });
+  } catch (err) {
+    console.error('Error recording view:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -490,4 +519,5 @@ module.exports = {
   getUserPosts,
   fundItem,
   getAllFunds,
+  recordView
 };

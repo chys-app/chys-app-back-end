@@ -14,6 +14,7 @@ const PostSchema = new Schema({
   likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   comments: [CommentSchema],
   viewCount: { type: Number, default: 0 },
+  viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   tags: [{ type: String }],
   location: { type: String }, 
   isActive: { type: Boolean, default: true },

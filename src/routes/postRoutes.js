@@ -12,7 +12,8 @@ const {
   addComment,
   getUserPosts,
   fundItem,
-  getAllFunds
+  getAllFunds,
+  recordView
 } = require('../controllers/postController');
 const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
@@ -36,8 +37,9 @@ router.patch('/:id', auth, uploadMultiple('media', 10), handleUploadError, updat
 router.delete('/:id', auth, deletePost);
 
 router.post('/:id/like', auth, toggleLike);
-
+router.post('/:id/view', auth, recordView);
 router.post('/:id/comment', auth, addComment);
+
 
 router.get('/user/:userId', getUserPosts);
 
