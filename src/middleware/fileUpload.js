@@ -11,7 +11,7 @@ const uploadFields = (fields) => {
 };
 
 // Middleware for multiple files upload
-const uploadMultiple = (fieldName, maxCount = 5) => {
+const uploadMultiple = (fieldName, maxCount = 10) => {
   return upload.array(fieldName, maxCount);
 };
 

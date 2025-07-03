@@ -23,14 +23,14 @@ router.post('/favorite/:postId', auth, toggleFavoritePost);
 // Create a new post
 router.post('/fundRaise/:type/:id', auth, fundItem)
 router.get('/fund/:type/:id', auth, getAllFunds);
-router.post('/', auth, uploadMultiple('media', 5), handleUploadError, createPost);
+router.post('/', auth, uploadMultiple('media',10), handleUploadError, createPost);
 
 router.get('/', auth, getAllPosts);
 
 router.get('/:id', auth, getPostById);
 
 
-router.patch('/:id', auth, uploadMultiple('media', 5), handleUploadError, updatePost);
+router.patch('/:id', auth, uploadMultiple('media', 10), handleUploadError, updatePost);
 
 
 router.delete('/:id', auth, deletePost);

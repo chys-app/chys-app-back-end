@@ -8,6 +8,7 @@ const User = require('../models/User');
 router.get('/:receiverId', auth, async (req, res) => {
   try {
     const { receiverId } = req.params;
+
     const messages = await Message.find({
       $or: [
         { senderId: req.user._id, receiverId },
@@ -15,63 +16,76 @@ router.get('/:receiverId', auth, async (req, res) => {
       ]
     }).sort({ timestamp: 1 });
 
-    res.json(messages);
+    // Format response to always include media
+    const formattedMessages = messages.map(msg => ({
+      _id: msg._id,
+      senderId: msg.senderId,
+      receiverId: msg.receiverId,
+      message: msg.message,
+      media: msg.media || null,
+      timestamp: msg.timestamp
+    }));
+
+    res.json(formattedMessages);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
 router.get('/get/users', auth, async (req, res) => {
-    try {
-      const userId = req.user._id;
-  
-      // Find distinct user IDs from messages
-      const messages = await Message.find({
-        $or: [
-          { senderId: userId },
-          { receiverId: userId }
-        ]
-      });
-  
-      const chatMap = new Map();
-  
-      // Find latest message per user
-      messages.forEach(msg => {
-        const otherUserId =
-          msg.senderId.toString() === userId.toString()
-            ? msg.receiverId.toString()
-            : msg.senderId.toString();
-  
-        if (
-          !chatMap.has(otherUserId) ||
-          msg.timestamp > chatMap.get(otherUserId).timestamp
-        ) {
-          chatMap.set(otherUserId, {
-            lastMessage: msg.message,
-            timestamp: msg.timestamp
-          });
-        }
-      });
-  
-      const userIds = Array.from(chatMap.keys());
-  
-      const users = await User.find({ _id: { $in: userIds } })
-        .select('_id name email');
-  
-      const result = users.map(user => {
-        const chatData = chatMap.get(user._id.toString());
-        return {
-          user,
-          lastMessage: chatData.lastMessage,
-          timestamp: chatData.timestamp
-        };
-      });
-  
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ message: 'Server error', error: error.message });
-    }
-  });
+  try {
+    const userId = req.user._id;
+
+    // Find all messages where the user is either sender or receiver
+    const messages = await Message.find({
+      $or: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    });
+
+    const chatMap = new Map();
+
+    // Get the latest message per conversation (based on timestamp)
+    messages.forEach(msg => {
+      const otherUserId = msg.senderId.toString() === userId.toString()
+        ? msg.receiverId.toString()
+        : msg.senderId.toString();
+
+      if (
+        !chatMap.has(otherUserId) ||
+        msg.timestamp > chatMap.get(otherUserId).timestamp
+      ) {
+        chatMap.set(otherUserId, {
+          lastMessage: msg.message,
+          media: msg.media || null,
+          timestamp: msg.timestamp
+        });
+      }
+    });
+
+    const userIds = Array.from(chatMap.keys());
+
+    // Fetch user details
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('_id name email');
+
+    // Merge user and message info
+    const result = users.map(user => {
+      const chatData = chatMap.get(user._id.toString());
+      return {
+        user,
+        lastMessage: chatData.lastMessage,
+        media: chatData.media,
+        timestamp: chatData.timestamp
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
 
 
 const { upload } = require('../config/cloudinary');
