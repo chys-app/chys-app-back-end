@@ -112,6 +112,7 @@ const getAllPosts = async (req, res) => {
       );
       const isFunded = !!userFund;
       const fundedAmount = userFund?.amount || 0;
+      const fundCount = post.funds?.length || 0;
 
       return {
         ...post,
@@ -119,7 +120,8 @@ const getAllPosts = async (req, res) => {
         isComment,
         isFavorite,
         isFunded,
-        fundedAmount
+        fundedAmount,
+        fundCount
       };
     });
 
