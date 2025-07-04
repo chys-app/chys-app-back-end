@@ -141,7 +141,6 @@ const resetPasswordAfterOTP = async (req, res) => {
   res.json({ message: 'Password reset successfully' });
 };
 
-
 const getProfile = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;

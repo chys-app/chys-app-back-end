@@ -64,19 +64,37 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    const userId = req.user?._id; // Make sure auth middleware sets this
+    const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
     const query = { isActive: true };
 
+    // Filter by tags
     if (req.query.tags) {
       query.tags = { $in: req.query.tags.split(",") };
     }
 
+    // Filter by location
     if (req.query.location) {
       query.location = req.query.location;
+    }
+
+    // ✅ Filter by following users
+    if (req.query.followingOnly === 'true') {
+      const currentUser = await User.findById(userId).select('following').lean();
+
+      if (!currentUser || !currentUser.following?.length) {
+        return res.json({
+          posts: [],
+          currentPage: page,
+          totalPages: 0,
+          totalPosts: 0
+        });
+      }
+
+      query.creator = { $in: currentUser.following };
     }
 
     const posts = await Post.find(query)
@@ -92,23 +110,22 @@ const getAllPosts = async (req, res) => {
 
     const total = await Post.countDocuments(query);
 
-    // Get user's favorites to avoid querying per post
+    // Get user's favorites
     const user = await User.findById(userId).select("favorites").lean();
-    const favoritePostIds = user?.favorites?.map((fav) => fav.toString()) || [];
+    const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
 
-    // Add isLike, isComment, isFavorite to each post
-    const enrichedPosts = posts.map((post) => {
+    const enrichedPosts = posts.map(post => {
       const postIdStr = post._id.toString();
 
       const isLike = post.likes.some(
-        (likeUser) => likeUser._id.toString() === userId.toString()
+        likeUser => likeUser._id.toString() === userId.toString()
       );
       const isComment = post.comments.some(
-        (comment) => comment.user?._id?.toString() === userId.toString()
+        comment => comment.user?._id?.toString() === userId.toString()
       );
       const isFavorite = favoritePostIds.includes(postIdStr);
       const userFund = post.funds?.find(
-        (fund) => fund.user.toString() === userId.toString()
+        fund => fund.user.toString() === userId.toString()
       );
       const isFunded = !!userFund;
       const fundedAmount = userFund?.amount || 0;
@@ -131,13 +148,14 @@ const getAllPosts = async (req, res) => {
       posts: enrichedPosts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
-      totalPosts: total,
+      totalPosts: total
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 const recordView = async (req, res) => {
