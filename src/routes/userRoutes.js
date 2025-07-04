@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
@@ -15,7 +15,7 @@ router.get('/', (req, res)=>{
     res.send('Hello World')
 })
 router.get('/allUsers', auth, getAllUsersBasic)
-
+router.post('/follow-toggle/:userId', auth, toggleFollow);
 
 router.get('/profile/:userId?', auth, getProfile);
 router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);

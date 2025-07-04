@@ -74,8 +74,9 @@ const userSchema = new mongoose.Schema({
     default: ""
   },
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
-  // ✅ Premium Fields
   isPremium: {
     type: Boolean,
     default: false

@@ -142,13 +142,19 @@ const resetPasswordAfterOTP = async (req, res) => {
 };
 
 
-// Get user profile
 const getProfile = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user._id;
+    const loggedInUserId = req.user._id;
+    const userId = req.params.userId || loggedInUserId;
 
-    // Get user profile
-    const user = await User.findById(userId).select('-password');
+    const isOwnProfile = userId.toString() === loggedInUserId.toString();
+
+    // Get user profile without password
+    const user = await User.findById(userId)
+      .select('-password')
+      .populate('followers', '_id')  // Only get IDs for count
+      .populate('following', '_id');
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -156,11 +162,24 @@ const getProfile = async (req, res) => {
     // Get all pet profiles for this user
     const petProfiles = await PetProfile.find({ user: userId });
 
+    // Determine if logged-in user is following the target user
+    let isFollowing = false;
+    if (!isOwnProfile) {
+      isFollowing = user.followers.some(f => f._id.toString() === loggedInUserId.toString());
+    }
+
     res.json({
-      user,
+      user: {
+        ...user.toObject(),
+        followerCount: user.followers.length,
+        followingCount: user.following.length,
+        isFollowing: isOwnProfile ? undefined : isFollowing,
+        isOwnProfile
+      },
       petProfiles
     });
   } catch (error) {
+    console.error("Error in getProfile:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -481,6 +500,51 @@ const getTransactionHistory = asyncHandler(async (req, res) => {
   });
 });
 
+const toggleFollow = async (req, res) => {
+  try {
+    const currentUserId = req.user._id;
+    const targetUserId = req.params.userId;
+
+    if (currentUserId.toString() === targetUserId.toString()) {
+      return res.status(400).json({ message: "You can't follow/unfollow yourself." });
+    }
+
+    const currentUser = await User.findById(currentUserId);
+    const targetUser = await User.findById(targetUserId);
+
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const isFollowing = currentUser.following.includes(targetUserId);
+
+    if (isFollowing) {
+      // Unfollow logic
+      currentUser.following = currentUser.following.filter(
+        id => id.toString() !== targetUserId.toString()
+      );
+      targetUser.followers = targetUser.followers.filter(
+        id => id.toString() !== currentUserId.toString()
+      );
+      await currentUser.save();
+      await targetUser.save();
+
+      return res.status(200).json({ message: "Unfollowed successfully", isFollowing: false });
+    } else {
+      // Follow logic
+      currentUser.following.push(targetUserId);
+      targetUser.followers.push(currentUserId);
+      await currentUser.save();
+      await targetUser.save();
+
+      return res.status(200).json({ message: "Followed successfully", isFollowing: true });
+    }
+  } catch (error) {
+    console.error("Toggle follow error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -496,5 +560,6 @@ module.exports = {
   getTransactionHistory,
   sendResetOTP,
   verifyResetOTP,
-  resetPasswordAfterOTP
+  resetPasswordAfterOTP,
+  toggleFollow
 }; 
