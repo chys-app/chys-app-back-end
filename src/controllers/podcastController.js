@@ -142,10 +142,7 @@ exports.getPodcastToken = asyncHandler(async (req, res) => {
   const userId = req.user._id.toString();
   const isHost = podcast.host.toString() === userId;
   const isGuest = podcast.guests.some(id => id.toString() === userId);
-
-  if (!isHost && !isGuest) {
-    return res.status(403).json({ message: 'Not authorized to join this podcast' });
-  }
+  
 
   const hostUser = await User.findById(podcast.host).select('numericUid');
   if (!hostUser || typeof hostUser.numericUid !== 'number') {
