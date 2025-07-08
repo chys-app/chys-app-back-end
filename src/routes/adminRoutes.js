@@ -31,6 +31,7 @@ router.get('/pet-profiles/:id', adminAuth, petProfileAdminController.getPetProfi
 router.put('/pet-profiles/:id', adminAuth, petProfileAdminController.updatePetProfile);
 router.delete('/pet-profiles/:id', adminAuth, petProfileAdminController.deletePetProfile);
 
+router.get('/posts', adminAuth, getAllPosts);
 
 // Donation management routes
 router.get('/', adminAuth, donationController.getAllDonations);
