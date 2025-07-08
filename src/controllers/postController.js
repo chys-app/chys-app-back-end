@@ -65,6 +65,9 @@ const createPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
   try {
     const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -117,20 +120,20 @@ const getAllPosts = async (req, res) => {
     const enrichedPosts = posts.map(post => {
       const postIdStr = post._id.toString();
 
-      const isLike = post.likes.some(
-        likeUser => likeUser._id.toString() === userId.toString()
+      const isLike = Array.isArray(post.likes) && post.likes.some(
+        likeUser => likeUser && likeUser._id && userId && likeUser._id.toString() === userId.toString()
       );
-      const isComment = post.comments.some(
-        comment => comment.user?._id?.toString() === userId.toString()
+      const isComment = Array.isArray(post.comments) && post.comments.some(
+        comment => comment.user && comment.user._id && userId && comment.user._id.toString() === userId.toString()
       );
       const isFavorite = favoritePostIds.includes(postIdStr);
-      const userFund = post.funds?.find(
-        fund => fund.user.toString() === userId.toString()
+      const userFund = Array.isArray(post.funds) && post.funds.find(
+        fund => fund.user && userId && fund.user.toString() === userId.toString()
       );
       const isFunded = !!userFund;
       const fundedAmount = userFund?.amount || 0;
-      const fundCount = post.funds?.length || 0;
-      const isViewed = post.viewedBy?.some(viewer => viewer.toString() === userId.toString());
+      const fundCount = Array.isArray(post.funds) ? post.funds.length : 0;
+      const isViewed = Array.isArray(post.viewedBy) && post.viewedBy.some(viewer => viewer && userId && viewer.toString() === userId.toString());
 
       return {
         ...post,
