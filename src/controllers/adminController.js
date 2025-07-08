@@ -169,39 +169,25 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-const getAllPosts = async (req, res) => {
+exports.getAllPosts = async (req, res) => {
   try {
-    const userId = req.user?._id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const query = { isActive: true };
+    const query = {};
 
-    // Filter by tags
+    // Optional filters (admin can still use them if desired)
     if (req.query.tags) {
       query.tags = { $in: req.query.tags.split(",") };
     }
 
-    // Filter by location
     if (req.query.location) {
       query.location = req.query.location;
     }
 
-    // ✅ Filter by following users
-    if (req.query.followingOnly === 'true') {
-      const currentUser = await User.findById(userId).select('following').lean();
-
-      if (!currentUser || !currentUser.following?.length) {
-        return res.json({
-          posts: [],
-          currentPage: page,
-          totalPages: 0,
-          totalPosts: 0
-        });
-      }
-
-      query.creator = { $in: currentUser.following };
+    if (req.query.isActive) {
+      query.isActive = req.query.isActive === 'true';
     }
 
     const posts = await Post.find(query)
@@ -217,42 +203,8 @@ const getAllPosts = async (req, res) => {
 
     const total = await Post.countDocuments(query);
 
-    // Get user's favorites
-    const user = await User.findById(userId).select("favorites").lean();
-    const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
-
-    const enrichedPosts = posts.map(post => {
-      const postIdStr = post._id.toString();
-
-      const isLike = post.likes.some(
-        likeUser => likeUser._id.toString() === userId.toString()
-      );
-      const isComment = post.comments.some(
-        comment => comment.user?._id?.toString() === userId.toString()
-      );
-      const isFavorite = favoritePostIds.includes(postIdStr);
-      const userFund = post.funds?.find(
-        fund => fund.user.toString() === userId.toString()
-      );
-      const isFunded = !!userFund;
-      const fundedAmount = userFund?.amount || 0;
-      const fundCount = post.funds?.length || 0;
-      const isViewed = post.viewedBy?.some(viewer => viewer.toString() === userId.toString());
-
-      return {
-        ...post,
-        isLike,
-        isComment,
-        isFavorite,
-        isFunded,
-        fundedAmount,
-        fundCount,
-        isViewed
-      };
-    });
-
     res.json({
-      posts: enrichedPosts,
+      posts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       totalPosts: total
