@@ -12,6 +12,7 @@ const adminAuth = require('../middleware/adminAuth');
 const donationController = require('../controllers/donationController');
 const { upload } = require('../config/cloudinary');
 const petProfileAdminController = require('../controllers/petProfileAdminController');
+const { getAllPosts } = require('../controllers/postController');
 
 // Admin authentication routes
 router.post('/signup', adminSignup);
