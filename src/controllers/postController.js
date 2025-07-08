@@ -541,6 +541,23 @@ const getAllFunds = async (req, res) => {
   }
 };
 
+const getShareablePostLink = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+
+    const shareLink = `https://www.chys.app/post/${post._id}`;
+
+    res.json({ shareLink });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -552,5 +569,6 @@ module.exports = {
   getUserPosts,
   fundItem,
   getAllFunds,
-  recordView
+  recordView,
+  getShareablePostLink
 };

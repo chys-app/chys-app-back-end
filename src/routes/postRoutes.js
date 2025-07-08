@@ -13,7 +13,8 @@ const {
   getUserPosts,
   fundItem,
   getAllFunds,
-  recordView
+  recordView,
+  getShareablePostLink
 } = require('../controllers/postController');
 const { toggleFavoritePost, getFavoritePosts } = require('../controllers/userController');
 
@@ -42,6 +43,7 @@ router.post('/:id/comment', auth, addComment);
 
 
 router.get('/user/:userId', getUserPosts);
+router.get("/share/:postId",auth, getShareablePostLink);
 
 
 
