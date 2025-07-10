@@ -215,11 +215,21 @@ const getPostById = async (req, res) => {
     post.viewCount += 1;
     await post.save();
 
-    res.json(post);
+    // ✅ Check if current user liked the post
+    const currentUserId = req.user._id.toString();
+    const isCurrentUserLiked = post.likes.some(user => user._id.toString() === currentUserId);
+
+    // ✅ Send post object + isCurrentUserLiked
+    res.json({
+      ...post.toObject(),
+      isCurrentUserLiked,
+    });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Update a post
 const updatePost = async (req, res) => {
