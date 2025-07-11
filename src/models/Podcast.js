@@ -41,6 +41,7 @@ const podcastSchema = new mongoose.Schema({
     type: String, 
     default: null,
   },
+  targetAmount: { type: Number, required: true },
   funds: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },

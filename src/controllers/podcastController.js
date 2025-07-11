@@ -16,6 +16,8 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     petProfiles,
     scheduledAt,
 
+    targetAmount, // ✅ New field
+
     heading1Text,
     heading1Font,
     heading1Color,
@@ -30,8 +32,13 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     bannerBackgroundColor,
   } = req.body;
 
-  if (!title || !scheduledAt) {
-    return res.status(400).json({ message: 'Title and scheduledAt are required.' });
+  // ✅ Basic required fields validation
+  if (!title || !scheduledAt || targetAmount === undefined) {
+    return res.status(400).json({ message: 'Title, scheduledAt, and targetAmount are required.' });
+  }
+
+  if (isNaN(targetAmount) || Number(targetAmount) <= 0) {
+    return res.status(400).json({ message: 'Target amount must be a valid positive number.' });
   }
 
   const channelName = uuidv4();
@@ -48,6 +55,8 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     scheduledAt,
     agoraChannel: channelName,
     bannerImage: bannerImageUrl,
+
+    targetAmount: Number(targetAmount), // ✅ Store in DB
 
     heading1: {
       text: heading1Text,
@@ -80,6 +89,7 @@ exports.createPodcast = asyncHandler(async (req, res) => {
 
   res.status(201).json({ success: true, podcast });
 });
+
 
 
 exports.editPodcast = asyncHandler(async (req, res) => {
