@@ -531,9 +531,9 @@ const getAllFunds = async (req, res) => {
     const item = await Model.findById(id)
       .populate({
         path: "funds.user",
-        select: "name email profileImage", // optional fields from User
+        select: "name email profileImage",
       })
-      .select("funds");
+      .select("funds targetAmount"); // this will just be ignored for Post
 
     if (!item) {
       return res.status(404).json({ message: `${type} not found.` });
@@ -542,6 +542,7 @@ const getAllFunds = async (req, res) => {
     const totalAmount = item.funds.reduce((sum, fund) => sum + fund.amount, 0);
 
     res.status(200).json({
+      targetAmount: type === "podcast" ? item.targetAmount : null, // ✅ handle missing field
       totalAmount,
       funds: item.funds,
     });
@@ -550,6 +551,7 @@ const getAllFunds = async (req, res) => {
     res.status(500).json({ message: "Server error." });
   }
 };
+
 
 const getShareablePostLink = async (req, res) => {
   try {
