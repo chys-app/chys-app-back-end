@@ -16,7 +16,7 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     petProfiles,
     scheduledAt,
 
-    targetAmount, // ✅ New field
+    targetAmount,
 
     heading1Text,
     heading1Font,
@@ -32,7 +32,6 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     bannerBackgroundColor,
   } = req.body;
 
-  // ✅ Basic required fields validation
   if (!title || !scheduledAt || targetAmount === undefined) {
     return res.status(400).json({ message: 'Title, scheduledAt, and targetAmount are required.' });
   }
@@ -43,8 +42,11 @@ exports.createPodcast = asyncHandler(async (req, res) => {
 
   const channelName = uuidv4();
 
-  // ✅ Extract Cloudinary file URL
-  const bannerImageUrl = req.file?.path || null;
+  // ✅ Banner image (optional)
+  const bannerImageUrl = req.files?.bannerImage?.[0]?.path || null;
+
+  // ✅ Extract proof image URLs from Cloudinary
+  const proofImages = req.files?.proofImages?.map(file => file.path) || [];
 
   const podcast = await Podcast.create({
     host: req.user._id,
@@ -55,8 +57,8 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     scheduledAt,
     agoraChannel: channelName,
     bannerImage: bannerImageUrl,
-
-    targetAmount: Number(targetAmount), // ✅ Store in DB
+    targetAmount: Number(targetAmount),
+    proofImages, // ✅ store proof image URLs
 
     heading1: {
       text: heading1Text,
@@ -89,6 +91,7 @@ exports.createPodcast = asyncHandler(async (req, res) => {
 
   res.status(201).json({ success: true, podcast });
 });
+
 
 
 

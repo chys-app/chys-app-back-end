@@ -41,6 +41,8 @@ const podcastSchema = new mongoose.Schema({
     type: String, 
     default: null,
   },
+  proofImages: [{ type: String, default: [] }],
+  isAdminApproved: { type: Boolean, default: false },
   targetAmount: { type: Number, required: true },
   funds: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

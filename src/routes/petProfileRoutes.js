@@ -7,7 +7,8 @@ const { upload } = require('../config/cloudinary');
 const multer = require('multer');
 const uploadFields = upload.fields([
   { name: 'profilePic', maxCount: 1 },
-  { name: 'photos', maxCount: 5 }
+  { name: 'photos', maxCount: 5 },
+  { name: 'proofImages', maxCount: 5 }
 ]);
 
 router.use(auth);
