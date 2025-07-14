@@ -186,16 +186,20 @@ const getProfile = async (req, res) => {
 };
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const { name, bio } = req.body;
+  const { name, bio, address, country, city, zipCode } = req.body;
 
   const user = await User.findById(req.user._id);
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
 
-  // Update fields
+  // Update basic fields
   if (name) user.name = name;
   if (bio) user.bio = bio;
+  if (address) user.address = address;
+  if (country) user.country = country;
+  if (city) user.city = city;
+  if (zipCode) user.zipCode = zipCode;
 
   // If a new profile picture is uploaded
   if (req.file?.path) {
@@ -211,7 +215,11 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       _id: user._id,
       name: user.name,
       bio: user.bio,
-      profilePic: user.profilePic
+      profilePic: user.profilePic,
+      address: user.address,
+      city: user.city,
+      country: user.country,
+      zipCode: user.zipCode
     }
   });
 });
