@@ -14,6 +14,9 @@ const createPetProfile = async (req, res) => {
       petType,
       name,
       breed,
+      race,
+      ownerContactNumber,
+      address,
       sex,
       dateOfBirth,
       bio,
@@ -63,6 +66,9 @@ const createPetProfile = async (req, res) => {
       profilePic,
       name,
       breed,
+      race,
+      ownerContactNumber,
+      address: address ? (typeof address === 'string' ? JSON.parse(address) : address) : undefined,
       sex,
       dateOfBirth,
       bio,
@@ -146,6 +152,8 @@ const updatePetProfile = async (req, res) => {
     updates.forEach(update => {
       if (update === 'personalityTraits' || update === 'allergies') {
         petProfile[update] = JSON.parse(req.body[update]);
+      } else if (update === 'address') {
+        petProfile[update] = typeof req.body[update] === 'string' ? JSON.parse(req.body[update]) : req.body[update];
       } else {
         petProfile[update] = req.body[update];
       }

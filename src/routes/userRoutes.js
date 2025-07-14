@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
@@ -27,4 +27,5 @@ router.post('/updateAmount', auth, donationController.recordDonationTransaction)
 router.put('/bank-details', auth, updateBankDetails);
 router.post('/withdraw', auth, requestWithdraw);
 router.get('/transaction-history', auth, getTransactionHistory);
+router.delete('/account', auth, deleteAccount);
 module.exports = router; 

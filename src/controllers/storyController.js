@@ -40,6 +40,7 @@ const getPublicStories = asyncHandler(async (req, res) => {
   const grouped = {};
 
   for (const story of stories) {
+    if (!story.userId) continue; // Skip if userId is null
     const uid = story.userId._id.toString();
 
     if (!grouped[uid]) {

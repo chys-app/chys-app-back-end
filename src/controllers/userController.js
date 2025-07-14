@@ -4,11 +4,13 @@ const asyncHandler  = require('express-async-handler');
 const mongoose = require('mongoose');
 
 const PetProfile = require('../models/PetProfile');
-const Notification = require('../models/Notification')
+const Notification = require('../models/Notification');
 const WithdrawRequest = require('../models/WithdrawRequest');
 const DonationTransaction = require('../models/DonationTransaction');
 const Podcast = require('../models/Podcast');
 const Post = require('../models/Post');
+const Message = require('../models/Message');
+const Stroy = require('../models/Stroy');
 const sendEmail = require('../utils/sendEmail');
 
 
@@ -544,6 +546,130 @@ const toggleFollow = async (req, res) => {
   }
 };
 
+const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { password } = req.body;
+
+    // Verify password before deletion
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required to delete account' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid password' });
+    }
+
+    // Start a database session for transaction
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Delete user's pet profiles
+      await PetProfile.deleteMany({ user: userId }, { session });
+
+      // Delete user's posts
+      await Post.deleteMany({ creator: userId }, { session });
+
+      // Delete user's stories
+      await Stroy.deleteMany({ userId: userId }, { session });
+
+      // Delete user's podcasts
+      await Podcast.deleteMany({ user: userId }, { session });
+
+      // Delete user's messages (both sent and received)
+      await Message.deleteMany({
+        $or: [
+          { senderId: userId },
+          { receiverId: userId }
+        ]
+      }, { session });
+
+      // Delete user's notifications
+      await Notification.deleteMany({ userId: userId }, { session });
+
+      // Delete user's withdraw requests
+      await WithdrawRequest.deleteMany({ user: userId }, { session });
+
+      // Delete user's donation transactions
+      await DonationTransaction.deleteMany({ userId: userId }, { session });
+
+      // Remove user from other users' followers/following lists
+      await User.updateMany(
+        { followers: userId },
+        { $pull: { followers: userId } },
+        { session }
+      );
+
+      await User.updateMany(
+        { following: userId },
+        { $pull: { following: userId } },
+        { session }
+      );
+
+      // Remove user from posts' likes and viewedBy arrays
+      await Post.updateMany(
+        { likes: userId },
+        { $pull: { likes: userId } },
+        { session }
+      );
+
+      await Post.updateMany(
+        { viewedBy: userId },
+        { $pull: { viewedBy: userId } },
+        { session }
+      );
+
+      // Remove user from posts' funds arrays
+      await Post.updateMany(
+        { 'funds.user': userId },
+        { $pull: { funds: { user: userId } } },
+        { session }
+      );
+
+      // Remove user from podcasts' funds arrays
+      await Podcast.updateMany(
+        { 'funds.user': userId },
+        { $pull: { funds: { user: userId } } },
+        { session }
+      );
+
+      // Finally, delete the user
+      await User.findByIdAndDelete(userId, { session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+
+      res.status(200).json({ 
+        message: 'Account and all associated data deleted successfully',
+        success: true
+      });
+
+    } catch (error) {
+      // If any operation fails, rollback the transaction
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // End the session
+      session.endSession();
+    }
+
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ 
+      message: 'Failed to delete account', 
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -560,5 +686,6 @@ module.exports = {
   sendResetOTP,
   verifyResetOTP,
   resetPasswordAfterOTP,
-  toggleFollow
+  toggleFollow,
+  deleteAccount
 }; 

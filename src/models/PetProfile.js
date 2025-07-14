@@ -28,6 +28,19 @@ const petProfileSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  race: {
+    type: String,
+    trim: true
+  },
+  ownerContactNumber: {
+    type: String,
+    trim: true
+  },
+  address: {
+    state: { type: String, trim: true },
+    city: { type: String, trim: true },
+    country: { type: String, trim: true }
+  },
   sex: {
     type: String,
     enum: ['male', 'female'],
