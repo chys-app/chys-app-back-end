@@ -678,6 +678,48 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+const sendVerificationOTP = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
+  const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  user.verificationOTP = otp;
+  user.verificationOTPExpires = new Date(expires);
+  await user.save();
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify Your Account',
+    html: `<p>Your verification OTP is <b>${otp}</b>. It expires in 10 minutes.</p>`
+  });
+
+  res.json({ message: 'Verification OTP sent to email' });
+});
+
+const verifyUser = asyncHandler(async (req, res) => {
+  const { otp } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+
+  if (
+    user.verificationOTP === otp &&
+    user.verificationOTPExpires &&
+    user.verificationOTPExpires > new Date()
+  ) {
+    user.isVerified = true;
+    user.verificationOTP = null;
+    user.verificationOTPExpires = null;
+    await user.save();
+    return res.json({ message: 'User verified successfully', isVerified: true });
+  } else {
+    return res.status(400).json({ message: 'Invalid or expired OTP' });
+  }
+});
+
 module.exports = {
   register,
   login,
@@ -695,5 +737,7 @@ module.exports = {
   verifyResetOTP,
   resetPasswordAfterOTP,
   toggleFollow,
-  deleteAccount
+  deleteAccount,
+  sendVerificationOTP,
+  verifyUser
 }; 

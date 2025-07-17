@@ -106,6 +106,18 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationOTP: {
+    type: String,
+    default: null
+  },
+  verificationOTPExpires: {
+    type: Date,
+    default: null
+  },
   bankDetails: {
     accountHolderName: { type: String, trim: true },
     routingNumber: { type: String, trim: true },
