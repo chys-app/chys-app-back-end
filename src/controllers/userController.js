@@ -83,6 +83,28 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    // If user is not verified, resend verification email and return message
+    if (!user.isVerified) {
+      // Generate and save new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      user.verificationToken = verificationToken;
+      user.verificationTokenExpires = verificationTokenExpires;
+      await user.save();
+
+      // Send verification email
+      const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify Your Email',
+        html: `<p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>This link will expire in 24 hours.</p>`
+      });
+
+      return res.status(403).json({
+        message: 'Your email is not verified. A new verification link has been sent to your email.'
+      });
+    }
     user.lat = lat;
     user.lng = lng;
     user.fcmToken = fcmToken
@@ -842,6 +864,35 @@ const verifyEmailLink = asyncHandler(async (req, res) => {
   res.send(renderVerificationPage('Email Verified!', 'Your email has been successfully verified. You can now retrun to app to login.', true));
 });
 
+const getVerificationStatus = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('isVerified');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  res.json({ isVerified: user.isVerified });
+});
+
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (user.isVerified) return res.status(400).json({ message: 'User is already verified.' });
+
+  // Generate and save new verification token
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  user.verificationToken = verificationToken;
+  user.verificationTokenExpires = verificationTokenExpires;
+  await user.save();
+
+  // Send verification email
+  const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify Your Email',
+    html: `<p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>This link will expire in 24 hours.</p>`
+  });
+
+  res.json({ message: 'A new verification link has been sent to your email.' });
+});
+
 module.exports = {
   register,
   login,
@@ -863,5 +914,7 @@ module.exports = {
   sendVerificationOTP,
   verifyUser,
   sendVerificationLink,
-  verifyEmailLink
+  verifyEmailLink,
+  getVerificationStatus,
+  resendVerificationEmail
 }; 
