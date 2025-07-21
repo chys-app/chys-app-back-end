@@ -118,6 +118,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  verificationToken: {
+    type: String,
+    default: null
+  },
+  verificationTokenExpires: {
+    type: Date,
+    default: null
+  },
   bankDetails: {
     accountHolderName: { type: String, trim: true },
     routingNumber: { type: String, trim: true },

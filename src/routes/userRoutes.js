@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser, sendVerificationLink, verifyEmailLink } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
@@ -12,6 +12,8 @@ router.post('/verify-reset-otp', verifyResetOTP);
 router.post('/reset-password', resetPasswordAfterOTP);
 router.post('/send-verification-otp', auth, sendVerificationOTP);
 router.post('/verify', auth, verifyUser);
+router.post('/send-verification-link', auth, sendVerificationLink);
+router.get('/verify-email', verifyEmailLink);
 
 router.get('/', (req, res)=>{
     res.send('Hello World')

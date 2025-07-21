@@ -2,6 +2,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const asyncHandler  = require('express-async-handler');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const PetProfile = require('../models/PetProfile');
 const Notification = require('../models/Notification');
@@ -41,7 +42,22 @@ const register = async (req, res) => {
 
     await user.save();
 
-    // Generate token
+    // Generate and save verification token
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpires = verificationTokenExpires;
+    await user.save();
+
+    // Send verification email
+    const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+    await sendEmail({
+      to: user.email,
+      subject: 'Verify Your Email',
+      html: `<p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>This link will expire in 24 hours.</p>`
+    });
+
+    // Generate token for login
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: '30d'
     });
@@ -720,6 +736,113 @@ const verifyUser = asyncHandler(async (req, res) => {
   }
 });
 
+const sendVerificationLink = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+
+  // Generate a secure random token
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+  user.verificationToken = token;
+  user.verificationTokenExpires = new Date(expires);
+  await user.save();
+
+  // Construct verification link
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const link = `${baseUrl}/api/users/verify-email?token=${token}`;
+
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify Your Email',
+    html: `<p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>This link will expire in 24 hours.</p>`
+  });
+
+  res.json({ message: 'Verification link sent to email' });
+});
+
+const renderVerificationPage = (title, message, success = false) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #6dd5ed 0%, #2193b0 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      padding: 2.5rem 2rem;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: ${success ? '#27ae60' : '#e74c3c'};
+    }
+    h2 {
+      margin: 0 0 1rem 0;
+      color: #222;
+    }
+    p {
+      color: #555;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.7rem 1.5rem;
+      background: #2193b0;
+      color: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #176582;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">${success ? '✅' : '❌'}</div>
+    <h2>${title}</h2>
+    <p>${message}</p>
+    <a class="btn" href="https://chys.app/login">Go to Login</a>
+  </div>
+</body>
+</html>
+`;
+
+const verifyEmailLink = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send(renderVerificationPage('Verification Failed', 'Verification token is required.', false));
+
+  const user = await User.findOne({ verificationToken: token, verificationTokenExpires: { $gt: new Date() } });
+  if (!user) return res.status(400).send(renderVerificationPage('Verification Failed', 'Invalid or expired verification token.', false));
+  if (user.isVerified) return res.status(400).send(renderVerificationPage('Already Verified', 'Your email is already verified. You can log in.', true));
+
+  user.isVerified = true;
+  user.verificationToken = null;
+  user.verificationTokenExpires = null;
+  await user.save();
+
+  res.send(renderVerificationPage('Email Verified!', 'Your email has been successfully verified. You can now log in.', true));
+});
+
 module.exports = {
   register,
   login,
@@ -739,5 +862,7 @@ module.exports = {
   toggleFollow,
   deleteAccount,
   sendVerificationOTP,
-  verifyUser
+  verifyUser,
+  sendVerificationLink,
+  verifyEmailLink
 }; 
