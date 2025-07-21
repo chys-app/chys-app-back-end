@@ -61,8 +61,8 @@ const register = async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: '30d'
     });
-
-    res.status(201).json({ user, token });
+    const message = 'Please verify your email to continue';
+    res.status(201).json({ user, token, message });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
