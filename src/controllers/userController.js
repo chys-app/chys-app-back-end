@@ -821,7 +821,6 @@ const renderVerificationPage = (title, message, success = false) => `
     <div class="icon">${success ? '✅' : '❌'}</div>
     <h2>${title}</h2>
     <p>${message}</p>
-    <a class="btn" href="https://chys.app/login">Go to Login</a>
   </div>
 </body>
 </html>
@@ -833,14 +832,14 @@ const verifyEmailLink = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ verificationToken: token, verificationTokenExpires: { $gt: new Date() } });
   if (!user) return res.status(400).send(renderVerificationPage('Verification Failed', 'Invalid or expired verification token.', false));
-  if (user.isVerified) return res.status(400).send(renderVerificationPage('Already Verified', 'Your email is already verified. You can log in.', true));
+  if (user.isVerified) return res.status(400).send(renderVerificationPage('Already Verified', 'Your email is already verified. You can now return to app.', true));
 
   user.isVerified = true;
   user.verificationToken = null;
   user.verificationTokenExpires = null;
   await user.save();
 
-  res.send(renderVerificationPage('Email Verified!', 'Your email has been successfully verified. You can now log in.', true));
+  res.send(renderVerificationPage('Email Verified!', 'Your email has been successfully verified. You can now retrun to app to login.', true));
 });
 
 module.exports = {
