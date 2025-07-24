@@ -1,3 +1,6 @@
+const axios = require('axios');
+const dotenv = require('dotenv')
+dotenv.config()
 const createFirebaseLink = async (verifyUrl) => {
     try {
       const firebaseApiKey = process.env.FIREBASE_API_KEY;
@@ -29,8 +32,10 @@ const createFirebaseLink = async (verifyUrl) => {
   
       return res.data.shortLink;
     } catch (err) {
+        console.error('Firebase Dynamic Link creation failed:', err.response?.data || err.message);
       console.error('Firebase Dynamic Link creation failed:', err.message);
       return verifyUrl;
     }
   };
   
+  module.exports = createFirebaseLink;

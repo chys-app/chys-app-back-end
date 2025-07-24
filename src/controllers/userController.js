@@ -13,22 +13,19 @@ const Post = require('../models/Post');
 const Message = require('../models/Message');
 const Stroy = require('../models/Stroy');
 const sendEmail = require('../utils/sendEmail');
-
+const createFirebaseLink = require('../utils/createFirebaseLink');
 
 const register = async (req, res) => {
   try {
     const { name, email, password, lat, lng, fcmToken, bio } = req.body;
 
-    // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Get uploaded profilePic URL from Cloudinary
     const profilePic = req.file?.path || '';
 
-    // Create new user
     const user = new User({
       name,
       email,
@@ -42,28 +39,33 @@ const register = async (req, res) => {
 
     await user.save();
 
-    // Generate and save verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     user.verificationToken = verificationToken;
     user.verificationTokenExpires = verificationTokenExpires;
     await user.save();
 
-    // Send verification email
-    const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+    const backendVerifyUrl = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+    const dynamicLink = await createFirebaseLink(backendVerifyUrl);
+
     await sendEmail({
       to: user.email,
       subject: 'Verify Your Email',
-      html: `<p>Click the link below to verify your email:</p><p><a href="${link}">${link}</a></p><p>This link will expire in 24 hours.</p>`
+      html: `
+        <p>Click the link below to verify your email:</p>
+        <p><a href="${dynamicLink}">${dynamicLink}</a></p>
+        <p>This link will open in the app (or fallback to browser) and will expire in 24 hours.</p>
+      `
     });
 
-    // Generate token for login
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: '30d'
     });
-    const message = 'Please verify your email to continue';
-    res.status(201).json({ user, token, message });
+
+    res.status(201).json({ user, token, message: 'Please verify your email to continue' });
+
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: error.message });
   }
 };
