@@ -10,7 +10,7 @@ const sendEmail = async ({ to, subject, html }) => {
   });
 
   const mailOptions = {
-    from: `"Pet App" <${process.env.EMAIL_USER}>`,
+    from: `"CHYS" <${process.env.EMAIL_USER}>`,
     to,
     subject,
     html
