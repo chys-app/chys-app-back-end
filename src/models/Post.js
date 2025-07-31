@@ -8,7 +8,7 @@ const CommentSchema = new Schema({
 });
 
 const PostSchema = new Schema({
-  description: { type: String, required: true },
+  description: { type: String},
   media: [{ type: String, required: true }], // image/video URLs
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
