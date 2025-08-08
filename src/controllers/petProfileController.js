@@ -120,12 +120,14 @@ const getPetProfile = async (req, res) => {
 const updatePetProfile = async (req, res) => {
   try {
     const petProfile = await PetProfile.findOne({ user: req.user._id });
-    
+
     if (!petProfile) {
       return res.status(404).json({ message: 'Pet profile not found' });
     }
 
-    // Handle profile picture update
+    /** ------------------------
+     * Handle profile picture update
+     * ------------------------ */
     if (req.files && req.files.length > 0) {
       // Delete old profile picture from Cloudinary if exists
       if (petProfile.profilePic) {
@@ -135,7 +137,9 @@ const updatePetProfile = async (req, res) => {
       petProfile.profilePic = req.files[0].path;
     }
 
-    // Handle additional photos update
+    /** ------------------------
+     * Handle additional photos update (replace all if uploaded)
+     * ------------------------ */
     if (req.files && req.files.length > 1) {
       // Delete old photos from Cloudinary
       if (petProfile.photos && petProfile.photos.length > 0) {
@@ -147,24 +151,41 @@ const updatePetProfile = async (req, res) => {
       petProfile.photos = req.files.slice(1).map(file => file.path);
     }
 
-    // Update other fields
+    /** ------------------------
+     * Handle selective photo deletion
+     * ------------------------ */
+    if (req.body.removePhotos && Array.isArray(req.body.removePhotos)) {
+      for (const url of req.body.removePhotos) {
+        const publicId = url.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+        petProfile.photos = petProfile.photos.filter(photo => photo !== url);
+      }
+    }
+
+    /** ------------------------
+     * Update other fields
+     * ------------------------ */
     const updates = Object.keys(req.body);
     updates.forEach(update => {
       if (update === 'personalityTraits' || update === 'allergies') {
         petProfile[update] = JSON.parse(req.body[update]);
       } else if (update === 'address') {
-        petProfile[update] = typeof req.body[update] === 'string' ? JSON.parse(req.body[update]) : req.body[update];
-      } else {
+        petProfile[update] = typeof req.body[update] === 'string'
+          ? JSON.parse(req.body[update])
+          : req.body[update];
+      } else if (update !== 'removePhotos') { // prevent overwriting with deletion array
         petProfile[update] = req.body[update];
       }
     });
 
     await petProfile.save();
     res.json(petProfile);
+
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 // Delete pet profile
 const deletePetProfile = async (req, res) => {
