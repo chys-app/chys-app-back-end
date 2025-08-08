@@ -125,9 +125,6 @@ const updatePetProfile = async (req, res) => {
       return res.status(404).json({ message: 'Pet profile not found' });
     }
 
-    /** ------------------------
-     * Handle profile picture update
-     * ------------------------ */
     if (req.files && req.files.length > 0) {
       // Delete old profile picture from Cloudinary if exists
       if (petProfile.profilePic) {
@@ -137,9 +134,6 @@ const updatePetProfile = async (req, res) => {
       petProfile.profilePic = req.files[0].path;
     }
 
-    /** ------------------------
-     * Handle additional photos update (replace all if uploaded)
-     * ------------------------ */
     if (req.files && req.files.length > 1) {
       // Delete old photos from Cloudinary
       if (petProfile.photos && petProfile.photos.length > 0) {
@@ -151,9 +145,6 @@ const updatePetProfile = async (req, res) => {
       petProfile.photos = req.files.slice(1).map(file => file.path);
     }
 
-    /** ------------------------
-     * Handle selective photo deletion
-     * ------------------------ */
     if (req.body.removePhotos && Array.isArray(req.body.removePhotos)) {
       for (const url of req.body.removePhotos) {
         const publicId = url.split('/').pop().split('.')[0];
@@ -162,9 +153,6 @@ const updatePetProfile = async (req, res) => {
       }
     }
 
-    /** ------------------------
-     * Update other fields
-     * ------------------------ */
     const updates = Object.keys(req.body);
     updates.forEach(update => {
       if (update === 'personalityTraits' || update === 'allergies') {
@@ -173,7 +161,7 @@ const updatePetProfile = async (req, res) => {
         petProfile[update] = typeof req.body[update] === 'string'
           ? JSON.parse(req.body[update])
           : req.body[update];
-      } else if (update !== 'removePhotos') { // prevent overwriting with deletion array
+      } else if (update !== 'removePhotos') { 
         petProfile[update] = req.body[update];
       }
     });
@@ -187,7 +175,6 @@ const updatePetProfile = async (req, res) => {
 };
 
 
-// Delete pet profile
 const deletePetProfile = async (req, res) => {
   try {
     const petProfile = await PetProfile.findOne({ user: req.user._id });
