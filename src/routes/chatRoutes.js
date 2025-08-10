@@ -14,13 +14,24 @@ router.get('/:receiverId', auth, async (req, res) => {
         { senderId: req.user._id, receiverId },
         { senderId: receiverId, receiverId: req.user._id }
       ]
-    }).sort({ timestamp: 1 });
+    })
+    .populate('senderId', '_id name profilePic')
+    .populate('receiverId', '_id name profilePic')
+    .sort({ timestamp: 1 });
 
-    // Format response to always include media
+    // Format response to include user details and media
     const formattedMessages = messages.map(msg => ({
       _id: msg._id,
-      senderId: msg.senderId,
-      receiverId: msg.receiverId,
+      sender: {
+        _id: msg.senderId._id,
+        name: msg.senderId.name,
+        profilePic: msg.senderId.profilePic
+      },
+      receiver: {
+        _id: msg.receiverId._id,
+        name: msg.receiverId.name,
+        profilePic: msg.receiverId.profilePic
+      },
       message: msg.message,
       media: msg.media || null,
       timestamp: msg.timestamp
@@ -105,4 +116,4 @@ router.post('/upload-media', upload.single('file'), (req, res) => {
 });
 
 module.exports = router;
-module.exports = router;
+
