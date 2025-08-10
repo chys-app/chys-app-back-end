@@ -68,7 +68,7 @@ router.get('/get/users', auth, async (req, res) => {
 
     // Fetch user details
     const users = await User.find({ _id: { $in: userIds } })
-      .select('_id name email');
+      .select('_id name email profilePic');
 
     // Merge user and message info
     const result = users.map(user => {
