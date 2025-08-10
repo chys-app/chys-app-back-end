@@ -45,9 +45,9 @@ const createPost = async (req, res) => {
 
     // Populate all necessary fields
     await post.populate([
-      { path: "creator", select: "username profilePicture" },
-      { path: "likes", select: "username profilePicture" },
-      { path: "comments.user", select: "username profilePicture" },
+      { path: "creator", select: "name profilePic" },
+      { path: "likes", select: "name profilePic" },
+      { path: "comments.user", select: "name profilePic" },
     ]);
 
     res.status(201).json(post);
@@ -203,9 +203,9 @@ const recordView = async (req, res) => {
 const getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id).populate([
-      { path: "creator", select: "username profilePicture" },
-      { path: "likes", select: "username profilePicture" },
-      { path: "comments.user", select: "username profilePicture" },
+      { path: "creator", select: "name profilePic" },
+      { path: "likes", select: "name profilePic" },
+      { path: "comments.user", select: "name profilePic" },
     ]);
 
     if (!post) {
@@ -291,9 +291,9 @@ const updatePost = async (req, res) => {
 
     // Populate all necessary fields
     await post.populate([
-      { path: "creator", select: "username profilePicture" },
-      { path: "likes", select: "username profilePicture" },
-      { path: "comments.user", select: "username profilePicture" },
+      { path: "creator", select: "name profilePic" },
+      { path: "likes", select: "name profilePic" },
+      { path: "comments.user", select: "name profilePic" },
     ]);
 
     res.json(post);
@@ -403,9 +403,9 @@ const addComment = async (req, res) => {
     await post.save();
 
     await post.populate([
-      { path: "creator", select: "username profilePicture" },
-      { path: "likes", select: "username profilePicture" },
-      { path: "comments.user", select: "username profilePicture" },
+      { path: "creator", select: "name profilePic" },
+      { path: "likes", select: "name profilePic" },
+      { path: "comments.user", select: "name profilePic" },
     ]);
 
     // 🔔 Notify post creator

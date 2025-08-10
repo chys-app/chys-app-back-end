@@ -17,7 +17,7 @@ const createFirebaseLink = require('../utils/createFirebaseLink');
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, lat, lng, fcmToken, bio } = req.body;
+    const { name, email, password, lat, lng, fcmToken, bio, state } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -34,7 +34,8 @@ const register = async (req, res) => {
       lng,
       fcmToken,
       bio,
-      profilePic
+      profilePic,
+      state
     });
 
     await user.save();
@@ -226,7 +227,7 @@ const getProfile = async (req, res) => {
 };
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const { name, bio, address, country, city, zipCode } = req.body;
+  const { name, bio, address, country, city, zipCode, state } = req.body;
 
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -240,6 +241,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   if (country) user.country = country;
   if (city) user.city = city;
   if (zipCode) user.zipCode = zipCode;
+  if (state) user.state = state;
 
   // If a new profile picture is uploaded
   if (req.file?.path) {
@@ -259,6 +261,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       address: user.address,
       city: user.city,
       country: user.country,
+      state: user.state,
       zipCode: user.zipCode
     }
   });
@@ -335,7 +338,7 @@ const toggleFavoritePost = asyncHandler(async (req, res) => {
 const getFavoritePosts = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).populate({
     path: 'favorites',
-    populate: { path: 'creator', select: 'name image' }
+    populate: { path: 'creator', select: 'name profilePic' }
   });
 
   const favoritesWithFlag = user.favorites.map(post => ({
