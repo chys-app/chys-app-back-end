@@ -125,16 +125,18 @@ const updatePetProfile = async (req, res) => {
       return res.status(404).json({ message: 'Pet profile not found' });
     }
 
-    if (req.files && req.files.length > 0) {
+    // Handle profile picture update
+    if (req.files && req.files.profilePic && req.files.profilePic.length > 0) {
       // Delete old profile picture from Cloudinary if exists
       if (petProfile.profilePic) {
         const publicId = petProfile.profilePic.split('/').pop().split('.')[0];
         await cloudinary.uploader.destroy(publicId);
       }
-      petProfile.profilePic = req.files[0].path;
+      petProfile.profilePic = req.files.profilePic[0].path;
     }
 
-    if (req.files && req.files.length > 1) {
+    // Handle additional photos update
+    if (req.files && req.files.photos && req.files.photos.length > 0) {
       // Delete old photos from Cloudinary
       if (petProfile.photos && petProfile.photos.length > 0) {
         for (const photo of petProfile.photos) {
@@ -142,9 +144,10 @@ const updatePetProfile = async (req, res) => {
           await cloudinary.uploader.destroy(publicId);
         }
       }
-      petProfile.photos = req.files.slice(1).map(file => file.path);
+      petProfile.photos = req.files.photos.map(file => file.path);
     }
 
+    // Handle photo removal
     if (req.body.removePhotos && Array.isArray(req.body.removePhotos)) {
       for (const url of req.body.removePhotos) {
         const publicId = url.split('/').pop().split('.')[0];

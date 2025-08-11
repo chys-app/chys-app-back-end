@@ -16,7 +16,7 @@ router.post('/', uploadFields, handleUploadError, createPetProfile);
 
 router.get('/', getPetProfile);
 
-router.put('/', uploadMultiple('images', 5), handleUploadError, updatePetProfile);
+router.put('/', uploadFields, handleUploadError, updatePetProfile);
 
 router.delete('/', deletePetProfile);
 
