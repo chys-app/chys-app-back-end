@@ -125,9 +125,34 @@ const updatePetProfile = async (req, res) => {
       return res.status(404).json({ message: 'Pet profile not found' });
     }
 
-    // Handle profile picture update
-    if (req.files && req.files.profilePic && req.files.profilePic.length > 0) {
-      // Delete old profile picture from Cloudinary if exists
+    /** --------------------------
+     * 1. REMOVE SELECTED PHOTOS
+     * --------------------------- */
+    if (req.body.removePhotos) {
+      let removeList = req.body.removePhotos;
+
+      // If frontend sends as JSON string, parse it
+      if (typeof removeList === 'string') {
+        try {
+          removeList = JSON.parse(removeList);
+        } catch {
+          return res.status(400).json({ message: 'Invalid removePhotos format' });
+        }
+      }
+
+      if (Array.isArray(removeList)) {
+        for (const url of removeList) {
+          const publicId = url.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(publicId);
+          petProfile.photos = petProfile.photos.filter(photo => photo !== url);
+        }
+      }
+    }
+
+    /** --------------------------
+     * 2. UPDATE PROFILE PIC
+     * --------------------------- */
+    if (req.files?.profilePic?.length > 0) {
       if (petProfile.profilePic) {
         const publicId = petProfile.profilePic.split('/').pop().split('.')[0];
         await cloudinary.uploader.destroy(publicId);
@@ -135,27 +160,17 @@ const updatePetProfile = async (req, res) => {
       petProfile.profilePic = req.files.profilePic[0].path;
     }
 
-    // Handle additional photos update
-    if (req.files && req.files.photos && req.files.photos.length > 0) {
-      // Delete old photos from Cloudinary
-      if (petProfile.photos && petProfile.photos.length > 0) {
-        for (const photo of petProfile.photos) {
-          const publicId = photo.split('/').pop().split('.')[0];
-          await cloudinary.uploader.destroy(publicId);
-        }
-      }
-      petProfile.photos = req.files.photos.map(file => file.path);
+    /** --------------------------
+     * 3. ADD NEW ADDITIONAL PHOTOS
+     * --------------------------- */
+    if (req.files?.photos?.length > 0) {
+      const newPhotoPaths = req.files.photos.map(file => file.path);
+      petProfile.photos = [...(petProfile.photos || []), ...newPhotoPaths];
     }
 
-    // Handle photo removal
-    if (req.body.removePhotos && Array.isArray(req.body.removePhotos)) {
-      for (const url of req.body.removePhotos) {
-        const publicId = url.split('/').pop().split('.')[0];
-        await cloudinary.uploader.destroy(publicId);
-        petProfile.photos = petProfile.photos.filter(photo => photo !== url);
-      }
-    }
-
+    /** --------------------------
+     * 4. UPDATE OTHER FIELDS
+     * --------------------------- */
     const updates = Object.keys(req.body);
     updates.forEach(update => {
       if (update === 'personalityTraits' || update === 'allergies') {
@@ -164,7 +179,7 @@ const updatePetProfile = async (req, res) => {
         petProfile[update] = typeof req.body[update] === 'string'
           ? JSON.parse(req.body[update])
           : req.body[update];
-      } else if (update !== 'removePhotos') { 
+      } else if (update !== 'removePhotos') {
         petProfile[update] = req.body[update];
       }
     });
@@ -176,6 +191,7 @@ const updatePetProfile = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 
 
 const deletePetProfile = async (req, res) => {
