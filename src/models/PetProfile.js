@@ -39,7 +39,8 @@ const petProfileSchema = new mongoose.Schema({
   address: {
     state: { type: String, trim: true },
     city: { type: String, trim: true },
-    country: { type: String, trim: true }
+    country: { type: String, trim: true },
+    zipCode: {type: String, trim: true}
   },
   sex: {
     type: String,
