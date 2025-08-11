@@ -72,6 +72,17 @@ const getAllPosts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Get current user's blocked users and users who blocked them
+    const currentUser = await User.findById(userId).select('blockedUsers').lean();
+    const blockedUserIds = currentUser?.blockedUsers || [];
+    
+    // Find users who have blocked the current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+    const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+    
+    // Combine all blocked user IDs
+    const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
     const query = { isActive: true };
 
     // Filter by tags
@@ -86,9 +97,9 @@ const getAllPosts = async (req, res) => {
 
     // ✅ Filter by following users
     if (req.query.followingOnly === 'true') {
-      const currentUser = await User.findById(userId).select('following').lean();
+      const currentUserWithFollowing = await User.findById(userId).select('following').lean();
 
-      if (!currentUser || !currentUser.following?.length) {
+      if (!currentUserWithFollowing || !currentUserWithFollowing.following?.length) {
         return res.json({
           posts: [],
           currentPage: page,
@@ -97,7 +108,26 @@ const getAllPosts = async (req, res) => {
         });
       }
 
-      query.creator = { $in: currentUser.following };
+      // Filter out blocked users from following
+      const validFollowingIds = currentUserWithFollowing.following.filter(
+        id => !allBlockedIds.includes(id.toString())
+      );
+      
+      if (!validFollowingIds.length) {
+        return res.json({
+          posts: [],
+          currentPage: page,
+          totalPages: 0,
+          totalPosts: 0
+        });
+      }
+
+      query.creator = { $in: validFollowingIds };
+    }
+
+    // Exclude posts from blocked users
+    if (allBlockedIds.length > 0) {
+      query.creator = { ...query.creator, $nin: allBlockedIds };
     }
 
     const posts = await Post.find(query)
@@ -372,6 +402,7 @@ const toggleLike = async (req, res) => {
         data: {
           postId: post._id.toString(),
         },
+        senderId: req.user._id
       });
     }
 
@@ -418,6 +449,7 @@ const addComment = async (req, res) => {
         data: {
           postId: post._id.toString(),
         },
+        senderId: req.user._id
       });
     }
 
@@ -433,6 +465,24 @@ const getUserPosts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const currentUserId = req.user._id;
+    const targetUserId = req.params.userId;
+
+    // Check if users are blocked from each other
+    const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
+    const targetUser = await User.findById(targetUserId).select('blockedUsers').lean();
+
+    if (!targetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if current user is blocked by target user or has blocked target user
+    if (currentUser.blockedUsers.includes(targetUserId) || targetUser.blockedUsers.includes(currentUserId)) {
+      return res.status(403).json({ 
+        message: 'Cannot view posts from blocked user',
+        blocked: true
+      });
+    }
 
     const posts = await Post.find({
       creator: req.params.userId,

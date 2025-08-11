@@ -8,11 +8,28 @@ const User = require('../models/User');
 router.get('/:receiverId', auth, async (req, res) => {
   try {
     const { receiverId } = req.params;
+    const currentUserId = req.user._id;
+
+    // Check if users are blocked from each other
+    const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
+    const receiverUser = await User.findById(receiverId).select('blockedUsers').lean();
+
+    if (!receiverUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if current user is blocked by receiver or has blocked receiver
+    if (currentUser.blockedUsers.includes(receiverId) || receiverUser.blockedUsers.includes(currentUserId)) {
+      return res.status(403).json({ 
+        message: 'Cannot chat with blocked user',
+        blocked: true
+      });
+    }
 
     const messages = await Message.find({
       $or: [
-        { senderId: req.user._id, receiverId },
-        { senderId: receiverId, receiverId: req.user._id }
+        { senderId: currentUserId, receiverId },
+        { senderId: receiverId, receiverId: currentUserId }
       ]
     })
     .populate('senderId', '_id name profilePic')
@@ -47,6 +64,17 @@ router.get('/get/users', auth, async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Get current user's blocked users and users who blocked them
+    const currentUser = await User.findById(userId).select('blockedUsers').lean();
+    const blockedUserIds = currentUser?.blockedUsers || [];
+    
+    // Find users who have blocked the current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+    const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+    
+    // Combine all blocked user IDs
+    const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
     // Find all messages where the user is either sender or receiver
     const messages = await Message.find({
       $or: [
@@ -63,6 +91,11 @@ router.get('/get/users', auth, async (req, res) => {
         ? msg.receiverId.toString()
         : msg.senderId.toString();
 
+      // Skip blocked users
+      if (allBlockedIds.some(id => id.toString() === otherUserId)) {
+        return;
+      }
+
       if (
         !chatMap.has(otherUserId) ||
         msg.timestamp > chatMap.get(otherUserId).timestamp
@@ -77,9 +110,11 @@ router.get('/get/users', auth, async (req, res) => {
 
     const userIds = Array.from(chatMap.keys());
 
-    // Fetch user details
-    const users = await User.find({ _id: { $in: userIds } })
-      .select('_id name email profilePic');
+    // Fetch user details (excluding blocked users)
+    const users = await User.find({ 
+      _id: { $in: userIds },
+      _id: { $nin: allBlockedIds }
+    }).select('_id name email profilePic');
 
     // Merge user and message info
     const result = users.map(user => {

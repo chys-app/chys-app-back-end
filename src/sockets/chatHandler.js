@@ -38,6 +38,27 @@ const chatHandler = (io) => {
 
     socket.on('private_message', async ({ receiverId, message, media }) => {
       try {
+        // Check if users are blocked from each other
+        const currentUser = await User.findById(userId).select('blockedUsers').lean();
+        const receiverUser = await User.findById(receiverId).select('blockedUsers').lean();
+
+        if (!receiverUser) {
+          socket.emit('error_message', {
+            message: 'User not found',
+            error: 'Receiver user does not exist'
+          });
+          return;
+        }
+
+        // Check if current user is blocked by receiver or has blocked receiver
+        if (currentUser.blockedUsers.includes(receiverId) || receiverUser.blockedUsers.includes(userId)) {
+          socket.emit('error_message', {
+            message: 'Cannot send message to blocked user',
+            error: 'Users are blocked from each other'
+          });
+          return;
+        }
+
         const newMessage = await Message.create({
           senderId: userId,
           receiverId,
@@ -70,7 +91,8 @@ const chatHandler = (io) => {
             data: {
               senderId: userId,
               messageId: newMessage._id.toString()
-            }
+            },
+            senderId: userId
           });
         }
       } catch (error) {

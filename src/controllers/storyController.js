@@ -29,8 +29,23 @@ const uploadStory = asyncHandler(async (req, res) => {
 const getPublicStories = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
+  // Get current user's blocked users and users who blocked them
+  const User = require('../models/User');
+  const currentUser = await User.findById(userId).select('blockedUsers').lean();
+  const blockedUserIds = currentUser?.blockedUsers || [];
+  
+  // Find users who have blocked the current user
+  const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+  const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+  
+  // Combine all blocked user IDs
+  const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
   const stories = await Story.find({
-    userId: { $ne: userId },
+    userId: { 
+      $ne: userId,
+      $nin: allBlockedIds
+    },
     expiresAt: { $gt: new Date() }
   })
     .sort({ createdAt: 1 })

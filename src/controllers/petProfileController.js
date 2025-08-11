@@ -208,12 +208,25 @@ const deletePetProfile = async (req, res) => {
 const getNearbyPets = async (req, res) => {
   try {
     const { lat, lng } = req.query;
+    const currentUserId = req.user._id;
 
     if (!lat || !lng) {
       return res.status(400).json({ message: 'Latitude and longitude are required' });
     }
 
+    // Get current user's blocked users and users who blocked them
+    const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
+    const blockedUserIds = currentUser?.blockedUsers || [];
+    
+    // Find users who have blocked the current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: currentUserId }).select('_id').lean();
+    const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+    
+    // Combine all blocked user IDs
+    const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
     const users = await User.find({
+      _id: { $nin: allBlockedIds },
       location: {
         $near: {
           $geometry: {
@@ -238,9 +251,26 @@ const getNearbyPets = async (req, res) => {
 const getPetById = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user._id;
 
     const pet = await PetProfile.findById(id).populate('user', 'name email location');
     if (!pet) return res.status(404).json({ message: 'Pet not found' });
+
+    // Check if users are blocked from each other
+    const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
+    const petOwner = await User.findById(pet.user._id).select('blockedUsers').lean();
+
+    if (!petOwner) {
+      return res.status(404).json({ message: 'Pet owner not found' });
+    }
+
+    // Check if current user is blocked by pet owner or has blocked pet owner
+    if (currentUser.blockedUsers.includes(pet.user._id) || petOwner.blockedUsers.includes(currentUserId)) {
+      return res.status(403).json({ 
+        message: 'Cannot view pet from blocked user',
+        blocked: true
+      });
+    }
 
     res.status(200).json({ pet });
   } catch (error) {

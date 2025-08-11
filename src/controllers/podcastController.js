@@ -87,6 +87,7 @@ exports.createPodcast = asyncHandler(async (req, res) => {
     data: {
       podcastId: podcast._id.toString(),
     },
+    senderId: req.user._id
   });
 
   res.status(201).json({ success: true, podcast });
@@ -270,10 +271,23 @@ exports.endPodcast = asyncHandler(async (req, res) => {
 
 
 exports.getUserPodcasts = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Get current user's blocked users and users who blocked them
+  const currentUser = await User.findById(userId).select('blockedUsers').lean();
+  const blockedUserIds = currentUser?.blockedUsers || [];
+  
+  // Find users who have blocked the current user
+  const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+  const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+  
+  // Combine all blocked user IDs
+  const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
   const podcasts = await Podcast.find({
     $or: [
-      { host: req.user._id },
-      { guests: req.user._id }
+      { host: userId },
+      { guests: userId }
     ]
   })
     .sort({ scheduledAt: -1 })
@@ -294,8 +308,20 @@ exports.getUserPodcasts = asyncHandler(async (req, res) => {
       }
     });
 
+  // Filter out podcasts from blocked users
+  const filteredPodcasts = podcasts.filter(podcast => {
+    const hostId = podcast.host._id.toString();
+    const guestIds = podcast.guests.map(guest => guest._id.toString());
+    
+    // Check if host or any guest is blocked
+    if (allBlockedIds.includes(hostId)) return false;
+    if (guestIds.some(guestId => allBlockedIds.includes(guestId))) return false;
+    
+    return true;
+  });
+
   res.json({
     success: true,
-    podcasts
+    podcasts: filteredPodcasts
   });
 });
