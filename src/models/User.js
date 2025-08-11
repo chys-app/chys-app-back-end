@@ -80,6 +80,8 @@ const userSchema = new mongoose.Schema({
   favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
   following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  reportedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   isPremium: {
     type: Boolean,

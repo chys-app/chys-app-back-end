@@ -3,6 +3,7 @@ const Post = require('../models/Post');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const UserReport = require('../models/UserReport'); // Added UserReport model
 
 // Admin Signup
 exports.adminSignup = async (req, res) => {
@@ -211,6 +212,121 @@ exports.getAllPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching posts:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all user reports
+exports.getAllUserReports = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const reports = await UserReport.find()
+      .populate('reporter', '_id name email profilePic')
+      .populate('reportedUser', '_id name email profilePic')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await UserReport.countDocuments();
+
+    res.json({
+      reports,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalReports: total
+    });
+  } catch (error) {
+    console.error("Error fetching user reports:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get user report by ID
+exports.getUserReportById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await UserReport.findById(id)
+      .populate('reporter', '_id name email profilePic')
+      .populate('reportedUser', '_id name email profilePic')
+      .populate('resolvedBy', '_id name email');
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    res.json({ report });
+  } catch (error) {
+    console.error("Error fetching user report:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update user report status
+exports.updateUserReportStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+
+    if (!status || !['pending', 'reviewed', 'resolved', 'dismissed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const updateData = { status };
+    if (adminNotes) updateData.adminNotes = adminNotes;
+    
+    if (status === 'resolved') {
+      updateData.resolvedAt = new Date();
+      updateData.resolvedBy = req.admin._id;
+    }
+
+    const report = await UserReport.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+    .populate('reporter', '_id name email profilePic')
+    .populate('reportedUser', '_id name email profilePic')
+    .populate('resolvedBy', '_id name email');
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    res.json({ 
+      message: 'Report status updated successfully', 
+      report 
+    });
+  } catch (error) {
+    console.error("Error updating user report:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Delete user report
+exports.deleteUserReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const report = await UserReport.findByIdAndDelete(id);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    res.json({ 
+      message: 'Report deleted successfully',
+      deletedReport: {
+        id: report._id,
+        reporter: report.reporter,
+        reportedUser: report.reportedUser
+      }
+    });
+  } catch (error) {
+    console.error("Error deleting user report:", error);
     res.status(500).json({ message: error.message });
   }
 };

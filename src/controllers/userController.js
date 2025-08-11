@@ -269,13 +269,26 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
 
 const getAllUsersBasic = asyncHandler(async (req, res) => {
-  // Step 1: Fetch all users with selected fields
-  const users = await User.find({}, '_id name profilePic bio');
+  const currentUserId = req.user._id;
+  
+  // Step 1: Fetch current user to get blocked users list
+  const currentUser = await User.findById(currentUserId).select('blockedUsers');
+  
+  // Step 2: Fetch all users except blocked ones
+  const users = await User.find(
+    { 
+      _id: { 
+        $ne: currentUserId,
+        $nin: currentUser.blockedUsers 
+      } 
+    }, 
+    '_id name profilePic bio'
+  );
 
-  // Step 2: Fetch all pet profiles
+  // Step 3: Fetch all pet profiles
   const pets = await PetProfile.find({}, 'user _id name profilePic bio');
 
-  // Step 3: Group pets by userId
+  // Step 4: Group pets by userId
   const petMap = {};
   pets.forEach(pet => {
     const userId = pet.user.toString();
@@ -288,7 +301,7 @@ const getAllUsersBasic = asyncHandler(async (req, res) => {
     });
   });
 
-  // Step 4: Build final response with user info + pets
+  // Step 5: Build final response with user info + pets
   const response = users.map(user => ({
     _id: user._id,
     name: user.name,
@@ -566,6 +579,11 @@ const toggleFollow = async (req, res) => {
 
     if (!targetUser) {
       return res.status(404).json({ message: "User not found." });
+    }
+
+    // Check if users are blocked from each other
+    if (currentUser.blockedUsers.includes(targetUserId) || targetUser.blockedUsers.includes(currentUserId)) {
+      return res.status(403).json({ message: "Cannot follow/unfollow blocked user." });
     }
 
     const isFollowing = currentUser.following.includes(targetUserId);
@@ -898,6 +916,133 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
   res.json({ message: 'A new verification link has been sent to your email.' });
 });
 
+const blockUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const currentUserId = req.user._id;
+
+  if (userId === currentUserId.toString()) {
+    return res.status(400).json({ message: 'You cannot block yourself' });
+  }
+
+  const userToBlock = await User.findById(userId);
+  if (!userToBlock) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const currentUser = await User.findById(currentUserId);
+  
+  // Check if already blocked
+  if (currentUser.blockedUsers.includes(userId)) {
+    return res.status(400).json({ message: 'User is already blocked' });
+  }
+
+  // Add to blocked users
+  currentUser.blockedUsers.push(userId);
+  
+  // Remove from following/followers if exists
+  currentUser.following.pull(userId);
+  currentUser.followers.pull(userId);
+  
+  // Remove current user from the blocked user's followers/following
+  userToBlock.following.pull(currentUserId);
+  userToBlock.followers.pull(currentUserId);
+
+  await Promise.all([currentUser.save(), userToBlock.save()]);
+
+  res.json({ 
+    success: true, 
+    message: 'User blocked successfully',
+    blockedUsers: currentUser.blockedUsers
+  });
+});
+
+const unblockUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const currentUserId = req.user._id;
+
+  const currentUser = await User.findById(currentUserId);
+  
+  // Check if user is blocked
+  if (!currentUser.blockedUsers.includes(userId)) {
+    return res.status(400).json({ message: 'User is not blocked' });
+  }
+
+  // Remove from blocked users
+  currentUser.blockedUsers.pull(userId);
+  await currentUser.save();
+
+  res.json({ 
+    success: true, 
+    message: 'User unblocked successfully',
+    blockedUsers: currentUser.blockedUsers
+  });
+});
+
+const reportUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { reason, description, evidence } = req.body;
+  const currentUserId = req.user._id;
+
+  if (userId === currentUserId.toString()) {
+    return res.status(400).json({ message: 'You cannot report yourself' });
+  }
+
+  if (!reason) {
+    return res.status(400).json({ message: 'Reason is required for reporting' });
+  }
+
+  const userToReport = await User.findById(userId);
+  if (!userToReport) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Check if already reported
+  if (currentUser.reportedUsers.includes(userId)) {
+    return res.status(400).json({ message: 'User is already reported' });
+  }
+
+  // Add to reported users
+  currentUser.reportedUsers.push(userId);
+  await currentUser.save();
+
+  // Create report record
+  const UserReport = require('../models/UserReport');
+  const report = new UserReport({
+    reporter: currentUserId,
+    reportedUser: userId,
+    reason,
+    description,
+    evidence: evidence || []
+  });
+  await report.save();
+
+  res.json({ 
+    success: true, 
+    message: 'User reported successfully',
+    reportId: report._id
+  });
+});
+
+const getBlockedUsers = asyncHandler(async (req, res) => {
+  const currentUser = await User.findById(req.user._id)
+    .populate('blockedUsers', '_id name profilePic email');
+
+  res.json({
+    success: true,
+    blockedUsers: currentUser.blockedUsers
+  });
+});
+
+const getReportedUsers = asyncHandler(async (req, res) => {
+  const currentUser = await User.findById(req.user._id)
+    .populate('reportedUsers', '_id name profilePic email');
+
+  res.json({
+    success: true,
+    reportedUsers: currentUser.reportedUsers
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -921,5 +1066,10 @@ module.exports = {
   sendVerificationLink,
   verifyEmailLink,
   getVerificationStatus,
-  resendVerificationEmail
+  resendVerificationEmail,
+  blockUser,
+  unblockUser,
+  reportUser,
+  getBlockedUsers,
+  getReportedUsers
 }; 
