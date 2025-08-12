@@ -83,10 +83,18 @@ router.get('/get/users', auth, async (req, res) => {
       ]
     });
 
+    console.log(`Found ${messages.length} messages for user ${userId}`);
+
     const chatMap = new Map();
 
     // Get the latest message per conversation (based on timestamp)
     messages.forEach(msg => {
+      // Ensure we have valid sender and receiver IDs
+      if (!msg.senderId || !msg.receiverId) {
+        console.warn('Message missing senderId or receiverId:', msg._id);
+        return;
+      }
+
       const otherUserId = msg.senderId.toString() === userId.toString()
         ? msg.receiverId.toString()
         : msg.senderId.toString();
@@ -101,7 +109,7 @@ router.get('/get/users', auth, async (req, res) => {
         msg.timestamp > chatMap.get(otherUserId).timestamp
       ) {
         chatMap.set(otherUserId, {
-          lastMessage: msg.message,
+          lastMessage: msg.message || '',
           media: msg.media || null,
           timestamp: msg.timestamp
         });
@@ -110,25 +118,33 @@ router.get('/get/users', auth, async (req, res) => {
 
     const userIds = Array.from(chatMap.keys());
 
+    console.log(`Found ${userIds.length} unique chat users`);
+
     // Fetch user details (excluding blocked users)
     const users = await User.find({ 
       _id: { $in: userIds },
       _id: { $nin: allBlockedIds }
     }).select('_id name email profilePic');
 
+    console.log(`Retrieved ${users.length} users from database`);
+
     // Merge user and message info
     const result = users.map(user => {
       const chatData = chatMap.get(user._id.toString());
+      if (!chatData) {
+        console.warn(`No chat data found for user ${user._id}`);
+      }
       return {
         user,
-        lastMessage: chatData.lastMessage,
-        media: chatData.media,
-        timestamp: chatData.timestamp
+        lastMessage: chatData?.lastMessage || null,
+        media: chatData?.media || null,
+        timestamp: chatData?.timestamp || null
       };
     });
 
     res.json(result);
   } catch (error) {
+    console.error('Error in /get/users endpoint:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
