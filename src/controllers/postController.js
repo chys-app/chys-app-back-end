@@ -465,8 +465,12 @@ const getUserPosts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
-    const currentUserId = req.user._id;
+    const currentUserId = req.user?._id;
     const targetUserId = req.params.userId;
+
+    if (!currentUserId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
 
     // Check if users are blocked from each other
     const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
@@ -516,7 +520,11 @@ const getUserPosts = async (req, res) => {
 
 const fundItem = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
     const { type, id } = req.params;
     const { amount } = req.body;
 

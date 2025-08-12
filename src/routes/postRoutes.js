@@ -42,7 +42,7 @@ router.post('/:postId/view', auth, recordView);
 router.post('/:id/comment', auth, addComment);
 
 
-router.get('/user/:userId', getUserPosts);
+router.get('/user/:userId', auth, getUserPosts);
 router.get("/share/:postId",auth, getShareablePostLink);
 
 
