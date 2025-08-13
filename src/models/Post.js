@@ -7,12 +7,19 @@ const CommentSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const ReportSchema = new Schema({
+  user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  reason: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const PostSchema = new Schema({
   description: { type: String},
   media: [{ type: String, required: true }], // image/video URLs
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   comments: [CommentSchema],
+  reports: [ReportSchema],
   viewCount: { type: Number, default: 0 },
   viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   tags: [{ type: String }],

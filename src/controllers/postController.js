@@ -130,6 +130,9 @@ const getAllPosts = async (req, res) => {
       query.creator = { ...query.creator, $nin: allBlockedIds };
     }
 
+    // Exclude posts that the current user has reported
+    query.reports = { $not: { $elemMatch: { user: userId } } };
+
     const posts = await Post.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -232,6 +235,8 @@ const recordView = async (req, res) => {
 // Get a single post by ID
 const getPostById = async (req, res) => {
   try {
+    const currentUserId = req.user._id;
+    
     const post = await Post.findById(req.params.id).populate([
       { path: "creator", select: "name profilePic" },
       { path: "likes", select: "name profilePic" },
@@ -242,12 +247,20 @@ const getPostById = async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    // Check if current user has reported this post
+    const isReported = post.reports.some(
+      report => report.user.toString() === currentUserId.toString()
+    );
+
+    if (isReported) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
     post.viewCount += 1;
     await post.save();
 
     // ✅ Check if current user liked the post
-    const currentUserId = req.user._id.toString();
-    const isCurrentUserLiked = post.likes.some(user => user._id.toString() === currentUserId);
+    const isCurrentUserLiked = post.likes.some(user => user._id.toString() === currentUserId.toString());
 
     // ✅ Send post object + isCurrentUserLiked
     res.json({
@@ -491,6 +504,7 @@ const getUserPosts = async (req, res) => {
     const posts = await Post.find({
       creator: req.params.userId,
       isActive: true,
+      reports: { $not: { $elemMatch: { user: currentUserId } } }
     })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -505,6 +519,7 @@ const getUserPosts = async (req, res) => {
     const total = await Post.countDocuments({
       creator: req.params.userId,
       isActive: true,
+      reports: { $not: { $elemMatch: { user: currentUserId } } }
     });
 
     res.json({
@@ -627,6 +642,48 @@ const getShareablePostLink = async (req, res) => {
   }
 };
 
+// Report a post
+const reportPost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { reason } = req.body;
+    const userId = req.user._id;
+
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ message: "Report reason is required" });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Check if user has already reported this post
+    const alreadyReported = post.reports.some(
+      report => report.user.toString() === userId.toString()
+    );
+
+    if (alreadyReported) {
+      return res.status(400).json({ message: "You have already reported this post" });
+    }
+
+    // Add the report
+    post.reports.push({
+      user: userId,
+      reason: reason.trim()
+    });
+
+    await post.save();
+
+    res.json({ 
+      message: "Post reported successfully",
+      reportCount: post.reports.length
+    });
+  } catch (error) {
+    console.error("Error reporting post:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 module.exports = {
   createPost,
@@ -640,5 +697,6 @@ module.exports = {
   fundItem,
   getAllFunds,
   recordView,
-  getShareablePostLink
+  getShareablePostLink,
+  reportPost
 };
