@@ -14,6 +14,7 @@ const Message = require('../models/Message');
 const Stroy = require('../models/Stroy');
 const sendEmail = require('../utils/sendEmail');
 const createFirebaseLink = require('../utils/createFirebaseLink');
+const UserReport = require('../models/UserReport');
 
 const register = async (req, res) => {
   try {
