@@ -1042,14 +1042,21 @@ const getBlockedUsers = asyncHandler(async (req, res) => {
 });
 
 const getReportedUsers = asyncHandler(async (req, res) => {
-  const currentUser = await User.findById(req.user._id)
-    .populate('reportedUsers', '_id name profilePic email');
+  const reports = await UserReport.find({ reporter: req.user._id })
+    .populate('reportedUser', '_id name profilePic email') // get reported user details
+    .select('reportedUser reason status createdAt'); // include reason, status, date
 
   res.json({
     success: true,
-    reportedUsers: currentUser.reportedUsers
+    reportedUsers: reports.map(report => ({
+      ...report.reportedUser.toObject(),
+      reason: report.reason,
+      status: report.status,
+      reportedAt: report.createdAt
+    }))
   });
 });
+
 
 module.exports = {
   register,
