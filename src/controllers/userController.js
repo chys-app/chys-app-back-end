@@ -996,6 +996,13 @@ const reportUser = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'User not found' });
   }
 
+  // ✅ Fetch current user
+  const currentUser = await User.findById(currentUserId);
+
+  if (!currentUser.reportedUsers) {
+    currentUser.reportedUsers = [];
+  }
+
   // Check if already reported
   if (currentUser.reportedUsers.includes(userId)) {
     return res.status(400).json({ message: 'User is already reported' });
@@ -1006,7 +1013,6 @@ const reportUser = asyncHandler(async (req, res) => {
   await currentUser.save();
 
   // Create report record
-  const UserReport = require('../models/UserReport');
   const report = new UserReport({
     reporter: currentUserId,
     reportedUser: userId,
@@ -1022,6 +1028,7 @@ const reportUser = asyncHandler(async (req, res) => {
     reportId: report._id
   });
 });
+
 
 const getBlockedUsers = asyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id)
