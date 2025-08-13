@@ -62,85 +62,60 @@ router.get('/:receiverId', auth, async (req, res) => {
 
 router.get('/get/users', auth, async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user._id.toString();
 
-    // Get current user's blocked users and users who blocked them
+    // Get blocked users (both ways)
     const currentUser = await User.findById(userId).select('blockedUsers').lean();
-    const blockedUserIds = currentUser?.blockedUsers || [];
-    
-    // Find users who have blocked the current user
-    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
-    const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
-    
-    // Combine all blocked user IDs
-    const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+    const blockedUserIds = currentUser?.blockedUsers.map(id => id.toString()) || [];
 
-    // Find all messages where the user is either sender or receiver
+    const blockedByUsers = await User.find({ blockedUsers: userId })
+      .select('_id')
+      .lean();
+    const blockedByUserIds = blockedByUsers.map(user => user._id.toString());
+
+    const allBlockedIds = [...new Set([...blockedUserIds, ...blockedByUserIds])];
+
+    // Get messages sorted by newest first
     const messages = await Message.find({
       $or: [
         { senderId: userId },
         { receiverId: userId }
       ]
-    });
-
-    console.log(`Found ${messages.length} messages for user ${userId}`);
+    }).sort({ timestamp: -1 }).lean();
 
     const chatMap = new Map();
 
-    // Get the latest message per conversation (based on timestamp)
-    messages.forEach(msg => {
-      // Ensure we have valid sender and receiver IDs
-      if (!msg.senderId || !msg.receiverId) {
-        console.warn('Message missing senderId or receiverId:', msg._id);
-        return;
-      }
-
-      const otherUserId = msg.senderId.toString() === userId.toString()
+    // Loop once, since messages are sorted newest first
+    for (const msg of messages) {
+      const otherUserId = msg.senderId.toString() === userId
         ? msg.receiverId.toString()
         : msg.senderId.toString();
 
       // Skip blocked users
-      if (allBlockedIds.some(id => id.toString() === otherUserId)) {
-        return;
-      }
+      if (allBlockedIds.includes(otherUserId)) continue;
 
-      if (
-        !chatMap.has(otherUserId) ||
-        msg.timestamp > chatMap.get(otherUserId).timestamp
-      ) {
+      // Store only first (latest) message for each user
+      if (!chatMap.has(otherUserId)) {
         chatMap.set(otherUserId, {
           lastMessage: msg.message || '',
           media: msg.media || null,
           timestamp: msg.timestamp
         });
       }
-    });
+    }
 
     const userIds = Array.from(chatMap.keys());
 
-    console.log(`Found ${userIds.length} unique chat users`);
+    // Fetch user details for chat partners
+    const users = await User.find({
+      _id: { $in: userIds, $nin: allBlockedIds }
+    }).select('_id name email profilePic').lean();
 
-    // Fetch user details (excluding blocked users)
-    const users = await User.find({ 
-      _id: { $in: userIds },
-      _id: { $nin: allBlockedIds }
-    }).select('_id name email profilePic');
-
-    console.log(`Retrieved ${users.length} users from database`);
-
-    // Merge user and message info
-    const result = users.map(user => {
-      const chatData = chatMap.get(user._id.toString());
-      if (!chatData) {
-        console.warn(`No chat data found for user ${user._id}`);
-      }
-      return {
-        user,
-        lastMessage: chatData?.lastMessage || null,
-        media: chatData?.media || null,
-        timestamp: chatData?.timestamp || null
-      };
-    });
+    // Merge with message data
+    const result = users.map(user => ({
+      user,
+      ...chatMap.get(user._id.toString())
+    }));
 
     res.json(result);
   } catch (error) {
@@ -148,6 +123,7 @@ router.get('/get/users', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
 
 
 const { upload } = require('../config/cloudinary');
