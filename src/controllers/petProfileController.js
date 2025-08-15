@@ -229,24 +229,28 @@ const getNearbyPets = async (req, res) => {
     const { lat, lng } = req.query;
     const currentUserId = req.user._id;
 
-    if (!lat || !lng) {
-      return res.status(400).json({ message: 'Latitude and longitude are required' });
-    }
-
     // Get current user's blocked users and users who blocked them
-    const currentUser = await User.findById(currentUserId).select('blockedUsers').lean();
+    const currentUser = await User.findById(currentUserId)
+      .select('blockedUsers')
+      .lean();
+
     const blockedUserIds = currentUser?.blockedUsers || [];
-    
+
     // Find users who have blocked the current user
-    const usersWhoBlockedMe = await User.find({ blockedUsers: currentUserId }).select('_id').lean();
+    const usersWhoBlockedMe = await User.find({ blockedUsers: currentUserId })
+      .select('_id')
+      .lean();
+
     const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
-    
+
     // Combine all blocked user IDs
     const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
 
-    const users = await User.find({
-      _id: { $nin: allBlockedIds },
-      location: {
+    let usersQuery = { _id: { $nin: allBlockedIds } };
+
+    // If lat/lng are provided, add location filter
+    if (lat && lng) {
+      usersQuery.location = {
         $near: {
           $geometry: {
             type: 'Point',
@@ -254,18 +258,21 @@ const getNearbyPets = async (req, res) => {
           },
           $maxDistance: 50000 // 50 km in meters
         }
-      }
-    }).select('_id');
+      };
+    }
 
+    const users = await User.find(usersQuery).select('_id');
     const userIds = users.map(u => u._id);
 
-    const pets = await PetProfile.find({ user: { $in: userIds } }).populate('user', 'name email location');
+    const pets = await PetProfile.find({ user: { $in: userIds } })
+      .populate('user', 'name email location');
 
     res.status(200).json({ pets });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
 
 const getPetById = async (req, res) => {
   try {

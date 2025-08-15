@@ -10,7 +10,6 @@ const checkBlocked = asyncHandler(async (req, res, next) => {
       return next();
     }
 
-    // Check if current user is blocked by target user
     const targetUser = await User.findById(targetUserId);
     if (targetUser && targetUser.blockedUsers.includes(currentUserId)) {
       return res.status(403).json({ 
