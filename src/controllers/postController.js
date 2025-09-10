@@ -3,6 +3,36 @@ const Podcast = require("../models/Podcast");
 const { cloudinary } = require("../config/cloudinary");
 const { sendNotification } = require("../utils/notificationUtil");
 const User = require("../models/User");
+const PetProfile = require("../models/PetProfile");
+
+// Helper function to populate pet information for posts
+const populatePetInfo = async (posts) => {
+  const enrichedPosts = [];
+  
+  for (const post of posts) {
+    // Get the user's pet profile
+    const petProfile = await PetProfile.findOne({ user: post.creator._id }).lean();
+    
+    // Create enriched post with pet info
+    const enrichedPost = {
+      ...post,
+      creator: {
+        ...post.creator,
+        name: petProfile ? petProfile.name : post.creator.name,
+        profilePic: petProfile ? petProfile.profilePic : post.creator.profilePic,
+        petInfo: petProfile ? {
+          petType: petProfile.petType,
+          breed: petProfile.breed,
+          race: petProfile.race
+        } : null
+      }
+    };
+    
+    enrichedPosts.push(enrichedPost);
+  }
+  
+  return enrichedPosts;
+};
 
 // Create a new post
 const createPost = async (req, res) => {
@@ -50,7 +80,9 @@ const createPost = async (req, res) => {
       { path: "comments.user", select: "name profilePic" },
     ]);
 
-    res.status(201).json(post);
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo([post]);
+    res.status(201).json(enrichedPosts[0]);
   } catch (error) {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -150,7 +182,10 @@ const getAllPosts = async (req, res) => {
     const user = await User.findById(userId).select("favorites").lean();
     const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
 
-    const enrichedPosts = posts.map(post => {
+    // First enrich with pet information
+    const postsWithPetInfo = await populatePetInfo(posts);
+
+    const enrichedPosts = postsWithPetInfo.map(post => {
       const postIdStr = post._id.toString();
 
       const isLike = Array.isArray(post.likes) && post.likes.some(
@@ -262,9 +297,13 @@ const getPostById = async (req, res) => {
     // ✅ Check if current user liked the post
     const isCurrentUserLiked = post.likes.some(user => user._id.toString() === currentUserId.toString());
 
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo([post.toObject()]);
+    const enrichedPost = enrichedPosts[0];
+
     // ✅ Send post object + isCurrentUserLiked
     res.json({
-      ...post.toObject(),
+      ...enrichedPost,
       isCurrentUserLiked,
     });
 
@@ -339,7 +378,9 @@ const updatePost = async (req, res) => {
       { path: "comments.user", select: "name profilePic" },
     ]);
 
-    res.json(post);
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo([post]);
+    res.json(enrichedPosts[0]);
   } catch (error) {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -400,10 +441,14 @@ const toggleLike = async (req, res) => {
     await post.save();
 
     await post.populate([
-      { path: "creator", select: "username profilePicture" },
-      { path: "likes", select: "username profilePicture" },
-      { path: "comments.user", select: "username profilePicture" },
+      { path: "creator", select: "name profilePic" },
+      { path: "likes", select: "name profilePic" },
+      { path: "comments.user", select: "name profilePic" },
     ]);
+
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo([post]);
+    const enrichedPost = enrichedPosts[0];
 
     // 🔔 Notify post creator
     if (liked && post.creator._id.toString() !== req.user._id.toString()) {
@@ -419,7 +464,7 @@ const toggleLike = async (req, res) => {
       });
     }
 
-    res.json(post);
+    res.json(enrichedPost);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -452,6 +497,10 @@ const addComment = async (req, res) => {
       { path: "comments.user", select: "name profilePic" },
     ]);
 
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo([post]);
+    const enrichedPost = enrichedPosts[0];
+
     // 🔔 Notify post creator
     if (post.creator._id.toString() !== req.user._id.toString()) {
       await sendNotification({
@@ -466,7 +515,7 @@ const addComment = async (req, res) => {
       });
     }
 
-    res.json(post);
+    res.json(enrichedPost);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -522,8 +571,11 @@ const getUserPosts = async (req, res) => {
       reports: { $not: { $elemMatch: { user: currentUserId } } }
     });
 
+    // Enrich with pet information
+    const enrichedPosts = await populatePetInfo(posts);
+
     res.json({
-      posts,
+      posts: enrichedPosts,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
       totalPosts: total,
