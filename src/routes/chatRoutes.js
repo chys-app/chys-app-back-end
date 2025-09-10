@@ -3,6 +3,33 @@ const router = express.Router();
 const Message = require('../models/Message');
 const auth = require('../middleware/auth');
 const User = require('../models/User');
+const PetProfile = require('../models/PetProfile');
+
+// Helper function to populate pet information for users
+const populatePetInfoForUsers = async (users) => {
+  const enrichedUsers = [];
+  
+  for (const user of users) {
+    // Get the user's pet profile
+    const petProfile = await PetProfile.findOne({ user: user._id }).lean();
+    
+    // Create enriched user with pet info
+    const enrichedUser = {
+      ...user,
+      name: petProfile ? petProfile.name : user.name,
+      profilePic: petProfile ? petProfile.profilePic : user.profilePic,
+      petInfo: petProfile ? {
+        petType: petProfile.petType,
+        breed: petProfile.breed,
+        race: petProfile.race
+      } : null
+    };
+    
+    enrichedUsers.push(enrichedUser);
+  }
+  
+  return enrichedUsers;
+};
 
 // Get messages between the authenticated user and another user
 router.get('/:receiverId', auth, async (req, res) => {
@@ -36,15 +63,34 @@ router.get('/:receiverId', auth, async (req, res) => {
     .populate('receiverId', '_id name profilePic')
     .sort({ timestamp: 1 });
 
-    // Format response to include user details and media
+    // Get unique user IDs from messages
+    const userIds = [...new Set([
+      ...messages.map(msg => msg.senderId._id.toString()),
+      ...messages.map(msg => msg.receiverId._id.toString())
+    ])];
+
+    // Fetch user details and enrich with pet info
+    const users = await User.find({ _id: { $in: userIds } })
+      .select('_id name profilePic')
+      .lean();
+    
+    const enrichedUsers = await populatePetInfoForUsers(users);
+    
+    // Create a map for quick lookup
+    const userMap = new Map();
+    enrichedUsers.forEach(user => {
+      userMap.set(user._id.toString(), user);
+    });
+
+    // Format response to include pet details and media
     const formattedMessages = messages.map(msg => ({
       _id: msg._id,
-      sender: {
+      sender: userMap.get(msg.senderId._id.toString()) || {
         _id: msg.senderId._id,
         name: msg.senderId.name,
         profilePic: msg.senderId.profilePic
       },
-      receiver: {
+      receiver: userMap.get(msg.receiverId._id.toString()) || {
         _id: msg.receiverId._id,
         name: msg.receiverId.name,
         profilePic: msg.receiverId.profilePic
@@ -111,8 +157,11 @@ router.get('/get/users', auth, async (req, res) => {
       _id: { $in: userIds, $nin: allBlockedIds }
     }).select('_id name email profilePic').lean();
 
+    // Enrich users with pet information
+    const enrichedUsers = await populatePetInfoForUsers(users);
+
     // Merge with message data
-    const result = users.map(user => ({
+    const result = enrichedUsers.map(user => ({
       user,
       ...chatMap.get(user._id.toString())
     }));

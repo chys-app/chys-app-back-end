@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const Message = require('../models/Message');
 const User = require('../models/User');
+const PetProfile = require('../models/PetProfile');
 const { sendNotification } = require('../utils/notificationUtil');
 
 
@@ -83,10 +84,14 @@ const chatHandler = (io) => {
         }
     
         if (receiverId !== userId) {
+          // Get sender's pet profile for notification
+          const petProfile = await PetProfile.findOne({ user: userId }).lean();
+          const senderName = petProfile ? petProfile.name : socket.user.name;
+          
           await sendNotification({
             userIds: receiverId,
             title: 'New Message 📩',
-            message: media ? `${socket.user.name} sent a media file.` : `${socket.user.name} sent you a message.`,
+            message: media ? `${senderName} sent a media file.` : `${senderName} sent you a message.`,
             type: 'MESSAGE',
             data: {
               senderId: userId,
