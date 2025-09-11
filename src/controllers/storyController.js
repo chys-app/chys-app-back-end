@@ -74,7 +74,8 @@ const getPublicStories = asyncHandler(async (req, res) => {
       caption: story.caption,
       createdAt: story.createdAt,
       expiresAt: story.expiresAt,
-      isView
+      isView,
+      viewCount: story.views ? story.views.length : 0
     });
   }
 
@@ -97,7 +98,8 @@ const getSingleStory = asyncHandler(async (req, res) => {
   
       const response = ownStories.map(story => ({
         ...story.toObject(),
-        viewsCount: story.views.length,
+        viewCount: story.views.length,
+        viewsCount: story.views.length, // Keep both for backward compatibility
         viewedBy: story.views.map(v => v.userId?.name)
       }));
   
@@ -133,7 +135,8 @@ const getSingleStory = asyncHandler(async (req, res) => {
   
       return {
         ...story.toObject(),
-        viewsCount: story.views.length,
+        viewCount: story.views.length,
+        viewsCount: story.views.length, // Keep both for backward compatibility
         ...(isOwner && {
           viewedBy: story.views.map(v => v.userId?.name)
         })
@@ -179,10 +182,59 @@ const deleteStory = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Story deleted successfully' });
 });
 
+// @desc    Update story view count
+// @route   POST /api/stories/:id/view
+// @access  Private
+const updateStoryView = asyncHandler(async (req, res) => {
+  const storyId = req.params.id;
+  const userId = req.user._id;
+
+  // Find the story
+  const story = await Story.findById(storyId);
+  
+  if (!story) {
+    return res.status(404).json({ success: false, message: 'Story not found' });
+  }
+
+  // Check if story has expired
+  if (story.expiresAt < new Date()) {
+    return res.status(404).json({ success: false, message: 'Story has expired' });
+  }
+
+  // Check if user is the owner of the story
+  if (story.userId.toString() === userId.toString()) {
+    return res.status(400).json({ success: false, message: 'Cannot view your own story' });
+  }
+
+  // Check if user has already viewed this story
+  const alreadyViewed = story.views.some(view => view.userId.toString() === userId.toString());
+  
+  if (alreadyViewed) {
+    return res.json({ 
+      success: true, 
+      message: 'Story already viewed',
+      viewsCount: story.views.length,
+      alreadyViewed: true
+    });
+  }
+
+  // Add view to the story
+  story.views.push({ userId: userId });
+  await story.save();
+
+  res.json({ 
+    success: true, 
+    message: 'Story view updated successfully',
+    viewsCount: story.views.length,
+    alreadyViewed: false
+  });
+});
+
 module.exports = {
   uploadStory,
   getPublicStories,
   getSingleStory,
   editStory,
-  deleteStory
+  deleteStory,
+  updateStoryView
 };
