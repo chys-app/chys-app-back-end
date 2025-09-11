@@ -99,7 +99,6 @@ const getSingleStory = asyncHandler(async (req, res) => {
       const response = ownStories.map(story => ({
         ...story.toObject(),
         viewCount: story.views.length,
-        viewsCount: story.views.length, // Keep both for backward compatibility
         viewedBy: story.views.map(v => v.userId?.name)
       }));
   
@@ -136,7 +135,6 @@ const getSingleStory = asyncHandler(async (req, res) => {
       return {
         ...story.toObject(),
         viewCount: story.views.length,
-        viewsCount: story.views.length, // Keep both for backward compatibility
         ...(isOwner && {
           viewedBy: story.views.map(v => v.userId?.name)
         })
