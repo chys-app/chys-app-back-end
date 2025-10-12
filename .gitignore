@@ -136,3 +136,5 @@ dist
 .pnp.*
 
 .vercel
+*firebase-adminsdk-*.json
+firebase-service-account.json
