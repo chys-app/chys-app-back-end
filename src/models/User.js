@@ -58,7 +58,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user','biz-user','admin'],
     default: 'user'
   },
   fcmToken: {
