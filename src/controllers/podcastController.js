@@ -325,3 +325,118 @@ exports.getUserPodcasts = asyncHandler(async (req, res) => {
     podcasts: filteredPodcasts
   });
 });
+
+exports.getFollowingPodcasts = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) {
+    return res.status(401).json({ message: "User not authenticated" });
+  }
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get current user with following list
+  const currentUser = await User.findById(userId).select('following blockedUsers');
+  
+  console.log('[getFollowingPodcasts] Current user:', userId);
+  console.log('[getFollowingPodcasts] Following count:', currentUser?.following?.length);
+  
+  if (!currentUser || !currentUser.following?.length) {
+    return res.json({
+      podcasts: [],
+      currentPage: page,
+      totalPages: 0,
+      totalPodcasts: 0
+    });
+  }
+
+  // Get blocked user IDs (convert to strings for comparison)
+  const blockedUserIds = (currentUser.blockedUsers || []).map(id => id.toString());
+  
+  // Find users who have blocked the current user
+  const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+  const blockedByUserIds = usersWhoBlockedMe.map(user => user._id.toString());
+  
+  // Combine all blocked user IDs
+  const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
+  // Filter out blocked users from following (keep as ObjectIds)
+  const validFollowingIds = currentUser.following.filter(
+    id => !allBlockedIds.includes(id.toString())
+  );
+  
+  console.log('[getFollowingPodcasts] Valid following IDs:', validFollowingIds);
+  console.log('[getFollowingPodcasts] Valid following IDs count:', validFollowingIds.length);
+  
+  if (!validFollowingIds.length) {
+    return res.json({
+      podcasts: [],
+      currentPage: page,
+      totalPages: 0,
+      totalPodcasts: 0
+    });
+  }
+
+  const query = {
+    host: { $in: validFollowingIds }
+  };
+  
+  console.log('[getFollowingPodcasts] Query:', JSON.stringify(query));
+
+  const podcasts = await Podcast.find(query)
+    .sort({ scheduledAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate({
+      path: 'host',
+      select: 'name bio profilePic'
+    })
+    .populate({
+      path: 'guests',
+      select: 'name bio profilePic'
+    })
+    .populate({
+      path: 'petProfiles',
+      select: 'name profilePic user',
+      populate: {
+        path: 'user',
+        select: 'name'
+      }
+    })
+    .lean();
+
+  const total = await Podcast.countDocuments(query);
+  
+  console.log('[getFollowingPodcasts] Found podcasts:', podcasts.length);
+  console.log('[getFollowingPodcasts] Total count:', total);
+
+  // Enrich podcasts with user-specific data
+  const enrichedPodcasts = podcasts.map(podcast => {
+    const userFund = Array.isArray(podcast.funds) && podcast.funds.find(
+      fund => fund.user && userId && fund.user.toString() === userId.toString()
+    );
+    const isFunded = !!userFund;
+    const fundedAmount = userFund?.amount || 0;
+    const fundCount = Array.isArray(podcast.funds) ? podcast.funds.length : 0;
+    const totalFunded = Array.isArray(podcast.funds) 
+      ? podcast.funds.reduce((sum, fund) => sum + fund.amount, 0) 
+      : 0;
+
+    return {
+      ...podcast,
+      isFunded,
+      fundedAmount,
+      fundCount,
+      totalFunded
+    };
+  });
+
+  res.json({
+    success: true,
+    podcasts: enrichedPodcasts,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    totalPodcasts: total
+  });
+});

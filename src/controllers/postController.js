@@ -737,6 +737,122 @@ const reportPost = async (req, res) => {
   }
 };
 
+// Get posts from users that current user is following
+const getFollowingPosts = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get current user with following list
+    const currentUser = await User.findById(userId).select('following blockedUsers').lean();
+    
+    if (!currentUser || !currentUser.following?.length) {
+      return res.json({
+        posts: [],
+        currentPage: page,
+        totalPages: 0,
+        totalPosts: 0
+      });
+    }
+
+    // Get blocked user IDs
+    const blockedUserIds = currentUser?.blockedUsers || [];
+    
+    // Find users who have blocked the current user
+    const usersWhoBlockedMe = await User.find({ blockedUsers: userId }).select('_id').lean();
+    const blockedByUserIds = usersWhoBlockedMe.map(user => user._id);
+    
+    // Combine all blocked user IDs
+    const allBlockedIds = [...blockedUserIds, ...blockedByUserIds];
+
+    // Filter out blocked users from following
+    const validFollowingIds = currentUser.following.filter(
+      id => !allBlockedIds.some(blockedId => blockedId.toString() === id.toString())
+    );
+    
+    if (!validFollowingIds.length) {
+      return res.json({
+        posts: [],
+        currentPage: page,
+        totalPages: 0,
+        totalPosts: 0
+      });
+    }
+
+    const query = {
+      isActive: true,
+      creator: { $in: validFollowingIds },
+      reports: { $not: { $elemMatch: { user: userId } } }
+    };
+
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate([
+        { path: "creator", select: "name bio profilePic" },
+        { path: "likes", select: "_id" },
+        { path: "comments.user", select: "_id name profilePic" },
+      ])
+      .lean();
+
+    const total = await Post.countDocuments(query);
+
+    // Get user's favorites
+    const user = await User.findById(userId).select("favorites").lean();
+    const favoritePostIds = user?.favorites?.map(fav => fav.toString()) || [];
+
+    // Enrich with pet information
+    const postsWithPetInfo = await populatePetInfo(posts);
+
+    const enrichedPosts = postsWithPetInfo.map(post => {
+      const postIdStr = post._id.toString();
+
+      const isLike = Array.isArray(post.likes) && post.likes.some(
+        likeUser => likeUser && likeUser._id && userId && likeUser._id.toString() === userId.toString()
+      );
+      const isComment = Array.isArray(post.comments) && post.comments.some(
+        comment => comment.user && comment.user._id && userId && comment.user._id.toString() === userId.toString()
+      );
+      const isFavorite = favoritePostIds.includes(postIdStr);
+      const userFund = Array.isArray(post.funds) && post.funds.find(
+        fund => fund.user && userId && fund.user.toString() === userId.toString()
+      );
+      const isFunded = !!userFund;
+      const fundedAmount = userFund?.amount || 0;
+      const fundCount = Array.isArray(post.funds) ? post.funds.length : 0;
+      const isViewed = Array.isArray(post.viewedBy) && post.viewedBy.some(viewer => viewer && userId && viewer.toString() === userId.toString());
+
+      return {
+        ...post,
+        isLike,
+        isComment,
+        isFavorite,
+        isFunded,
+        fundedAmount,
+        fundCount,
+        isViewed
+      };
+    });
+
+    res.json({
+      posts: enrichedPosts,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalPosts: total
+    });
+  } catch (error) {
+    console.error("Error fetching following posts:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createPost,
   getAllPosts,
@@ -750,5 +866,6 @@ module.exports = {
   getAllFunds,
   recordView,
   getShareablePostLink,
-  reportPost
+  reportPost,
+  getFollowingPosts
 };
