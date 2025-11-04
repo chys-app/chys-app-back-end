@@ -47,7 +47,7 @@ const register = async (req, res) => {
     user.verificationTokenExpires = verificationTokenExpires;
     await user.save();
 
-    const backendVerifyUrl = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+    const backendVerifyUrl = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
     const dynamicLink = await createFirebaseLink(backendVerifyUrl);
 
     await sendEmail({
@@ -98,7 +98,7 @@ const login = async (req, res) => {
       await user.save();
 
       // Send verification email
-      const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+      const link = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
       await sendEmail({
         to: user.email,
         subject: 'Verify Your Email',
@@ -796,8 +796,8 @@ const sendVerificationLink = asyncHandler(async (req, res) => {
   await user.save();
 
   // Construct verification link
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const link = `${baseUrl}/api/users/verify-email?token=${token}`;
+  const baseUrl = process.env.BACKEND_URL || 'https://pet-app-eta-ashy.vercel.app/api';
+  const link = `${baseUrl}/users/verify-email?token=${token}`;
 
   await sendEmail({
     to: user.email,
@@ -907,7 +907,7 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
   await user.save();
 
   // Send verification email
-  const link = `https://api.chys.app/api/users/verify-email?token=${verificationToken}`;
+  const link = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
   await sendEmail({
     to: user.email,
     subject: 'Verify Your Email',
