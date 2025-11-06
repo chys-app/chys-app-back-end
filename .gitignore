@@ -139,3 +139,4 @@ dist
 *firebase-adminsdk-*.json
 firebase-service-account.json
 production.env
+.DS_Store
