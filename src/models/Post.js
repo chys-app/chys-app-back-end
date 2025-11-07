@@ -15,6 +15,7 @@ const ReportSchema = new Schema({
 
 const PostSchema = new Schema({
   description: { type: String},
+  type: { type: String, enum: ['post', 'fundraise'], required: true },
   media: [{ type: String, required: true }], // image/video URLs
   creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
@@ -25,6 +26,11 @@ const PostSchema = new Schema({
   tags: [{ type: String }],
   location: { type: String }, 
   isActive: { type: Boolean, default: true },
+  // fundraise fields
+  goal: { type: Number },
+  deadline: { type: Date },
+  
+
   funds: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },
