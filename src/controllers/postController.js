@@ -37,7 +37,7 @@ const populatePetInfo = async (posts) => {
 // Create a new post
 const createPost = async (req, res) => {
   try {
-    const { description, tags, location } = req.body;
+    const { description, tags, location, type, goal, deadline } = req.body;
 
     // Handle media uploads
     const media = [];
@@ -65,10 +65,13 @@ const createPost = async (req, res) => {
 
     const post = new Post({
       description: description.trim(),
+      type: type || 'post',
       media,
       creator: req.user._id,
       ...(parsedTags.length > 0 && { tags: parsedTags }),
       ...(location && { location: location.trim() }),
+      ...(type === 'fundraise' && goal && { goal: parseFloat(goal) }),
+      ...(type === 'fundraise' && deadline && { deadline: new Date(deadline) }),
     });
 
     await post.save();
@@ -317,7 +320,7 @@ const getPostById = async (req, res) => {
 const updatePost = async (req, res) => {
   try {
     const updates = Object.keys(req.body);
-    const allowedUpdates = ["description", "tags", "location"];
+    const allowedUpdates = ["description", "tags", "location", "goal", "deadline"];
     const isValidOperation = updates.every((update) =>
       allowedUpdates.includes(update)
     );
@@ -364,6 +367,10 @@ const updatePost = async (req, res) => {
         } catch (error) {
           post[update] = req.body[update].split(",").map((tag) => tag.trim());
         }
+      } else if (update === "goal") {
+        post[update] = parseFloat(req.body[update]);
+      } else if (update === "deadline") {
+        post[update] = new Date(req.body[update]);
       } else {
         post[update] = req.body[update].trim();
       }

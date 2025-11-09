@@ -11,6 +11,7 @@ const chatRoutes = require('./routes/chatRoutes');
 const storyRoutes = require('./routes/storyRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const productRoutes = require('./routes/productRoutes');
 
 const { connectDB, disconnectDB } = require('./config/database');
 const logger = require('./config/logger');
@@ -49,6 +50,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/story', storyRoutes)
 app.use('/api/podcast', podcastRoutes)
 app.use('/api/admin', adminRoutes);
+app.use('/api', productRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to Pet App API' });
