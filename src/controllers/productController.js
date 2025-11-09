@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { cloudinary } = require('../config/cloudinary');
 
 const createProduct = async (req, res) => {
@@ -57,6 +58,7 @@ const getProducts = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const getProductById = async (req, res) => {
   try {
@@ -167,11 +169,78 @@ const getPublicProducts = async (req, res) => {
   }
 };
 
+const addToWishlist = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user._id;
+
+    // Check if product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Add to user's wishlist if not already there
+    const user = await User.findById(userId);
+    if (!user.wishList.includes(productId)) {
+      user.wishList.push(productId);
+      await user.save();
+    }
+
+    res.json({ message: 'Product added to wishlist', wishList: user.wishList });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const removeFromWishlist = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const userId = req.user._id;
+
+    // Remove from user's wishlist
+    const user = await User.findById(userId);
+    const wishlistIndex = user.wishList.indexOf(productId);
+    
+    if (wishlistIndex === -1) {
+      return res.status(400).json({ message: 'Product not in wishlist' });
+    }
+
+    user.wishList.splice(wishlistIndex, 1);
+    await user.save();
+
+    res.json({ message: 'Product removed from wishlist', wishList: user.wishList });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getWishlist = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).populate({
+      path: 'wishList',
+      populate: {
+        path: 'owner',
+        select: 'name profilePic'
+      }
+    });
+
+    res.json(user.wishList);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createProduct,
   getProducts,
+  getPublicProducts,
   getProductById,
   updateProduct,
   deleteProduct,
-  getPublicProducts
+  addToWishlist,
+  removeFromWishlist,
+  getWishlist,
 };
