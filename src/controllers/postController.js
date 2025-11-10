@@ -275,7 +275,7 @@ const getPostById = async (req, res) => {
   try {
     const currentUserId = req.user._id;
     
-    const post = await Post.findById(req.params.id).populate([
+    const post = await Post.findById(req.params.id).select('type description media creator likes comments reports viewCount viewedBy tags location isActive goal deadline funds createdAt updatedAt').populate([
       { path: "creator", select: "name profilePic" },
       { path: "likes", select: "name profilePic" },
       { path: "comments.user", select: "name profilePic" },
