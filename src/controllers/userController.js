@@ -1057,6 +1057,103 @@ const getReportedUsers = asyncHandler(async (req, res) => {
   });
 });
 
+const toggleWishlistProduct = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const productId = req.params.productId;
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: 'Invalid product ID' });
+  }
+
+  const isInWishlist = user.wishlist.includes(productId);
+
+  if (isInWishlist) {
+    // Remove from wishlist
+    user.wishlist.pull(productId);
+    await user.save();
+    return res.json({ success: true, message: 'Product removed from wishlist' });
+  } else {
+    // Add to wishlist
+    user.wishlist.push(productId);
+    await user.save();
+    return res.json({ success: true, message: 'Product added to wishlist' });
+  }
+});
+
+const getWishlist = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).populate({
+    path: 'wishlist',
+    populate: { path: 'owner', select: 'name profilePic' }
+  });
+
+  const wishlistWithFlag = user.wishlist.map(product => ({
+    ...product.toObject(),
+    isInWishlist: true
+  }));
+
+  res.json({ success: true, wishlist: wishlistWithFlag });
+});
+
+const removeFromWishlist = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const productId = req.params.productId;
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    return res.status(400).json({ message: 'Invalid product ID' });
+  }
+
+  if (!user.wishlist.includes(productId)) {
+    return res.status(400).json({ message: 'Product not in wishlist' });
+  }
+
+  user.wishlist.pull(productId);
+  await user.save();
+
+  res.json({ success: true, message: 'Product removed from wishlist' });
+});
+
+const getPublicWishlist = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID' });
+  }
+
+  const user = await User.findById(userId).populate({
+    path: 'wishlist',
+    populate: { path: 'owner', select: 'name profilePic' }
+  });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // If the requesting user is authenticated, check which products are in their own wishlist
+  let wishlistWithFlag = user.wishlist.map(product => ({
+    ...product.toObject(),
+    isInWishlist: false
+  }));
+
+  if (req.user) {
+    const currentUser = await User.findById(req.user._id).select('wishlist');
+    const currentUserWishlistIds = currentUser.wishlist.map(id => id.toString());
+    
+    wishlistWithFlag = user.wishlist.map(product => ({
+      ...product.toObject(),
+      isInWishlist: currentUserWishlistIds.includes(product._id.toString())
+    }));
+  }
+
+  res.json({ 
+    success: true, 
+    user: {
+      _id: user._id,
+      name: user.name,
+      profilePic: user.profilePic
+    },
+    wishlist: wishlistWithFlag 
+  });
+});
 
 module.exports = {
   register,
@@ -1086,5 +1183,9 @@ module.exports = {
   unblockUser,
   reportUser,
   getBlockedUsers,
-  getReportedUsers
+  getReportedUsers,
+  toggleWishlistProduct,
+  getWishlist,
+  removeFromWishlist,
+  getPublicWishlist
 }; 

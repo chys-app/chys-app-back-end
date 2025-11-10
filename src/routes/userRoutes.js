@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser, sendVerificationLink, verifyEmailLink, getVerificationStatus, resendVerificationEmail, blockUser, unblockUser, reportUser, getBlockedUsers, getReportedUsers } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser, sendVerificationLink, verifyEmailLink, getVerificationStatus, resendVerificationEmail, blockUser, unblockUser, reportUser, getBlockedUsers, getReportedUsers, toggleWishlistProduct, getWishlist, removeFromWishlist, getPublicWishlist } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
@@ -41,5 +41,11 @@ router.delete('/block/:userId', auth, unblockUser);
 router.post('/report/:userId', auth, reportUser);
 router.get('/blocked-users', auth, getBlockedUsers);
 router.get('/reported-users', auth, getReportedUsers);
+
+// Wishlist Routes
+router.post('/wishlist/:productId', auth, toggleWishlistProduct);
+router.get('/wishlist', auth, getWishlist);
+router.delete('/wishlist/:productId', auth, removeFromWishlist);
+router.get('/wishlist/:userId', getPublicWishlist);
 
 module.exports = router; 

@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const User = require('../models/User');
 const { cloudinary } = require('../config/cloudinary');
 
 const createProduct = async (req, res) => {
@@ -158,9 +159,21 @@ const deleteProduct = async (req, res) => {
 
 const getPublicProducts = async (req, res) => {
   try {
-    const products = await Product.find({})
+    let products = await Product.find({})
       .populate('owner', 'username email')
       .sort({ createdAt: -1 });
+
+    // If user is authenticated, check wishlist status
+    if (req.user) {
+      const user = await User.findById(req.user._id).select('wishlist');
+      const wishlistProductIds = user.wishlist.map(id => id.toString());
+      
+      products = products.map(product => ({
+        ...product.toObject(),
+        isInWishlist: wishlistProductIds.includes(product._id.toString())
+      }));
+    }
+
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
