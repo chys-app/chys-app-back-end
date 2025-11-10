@@ -217,7 +217,7 @@ const removeFromWishlist = async (req, res) => {
 
 const getWishlist = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.params.userId || req.user._id;
 
     const user = await User.findById(userId).populate({
       path: 'wishList',
