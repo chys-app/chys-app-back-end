@@ -27,6 +27,9 @@ const createProduct = async (req, res) => {
       ownerName: req.user.name
     });
 
+    // Populate owner info for response
+    await product.populate('owner', 'name profilePic email');
+
     res.status(201).json(product);
   } catch (error) {
     if (req.files && req.files.length > 0) {
@@ -52,7 +55,12 @@ const createProduct = async (req, res) => {
 
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find({ owner: req.user._id }).sort({ createdAt: -1 });
+    const { userId } = req.query;
+    const targetUserId = userId || req.user._id;
+    
+    const products = await Product.find({ owner: targetUserId })
+      .populate('owner', 'name profilePic email')
+      .sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -65,7 +73,8 @@ const getProductById = async (req, res) => {
     const product = await Product.findOne({
       _id: req.params.productId,
       owner: req.user._id
-    });
+    })
+    .populate('owner', 'name profilePic email');
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
@@ -161,7 +170,7 @@ const deleteProduct = async (req, res) => {
 const getPublicProducts = async (req, res) => {
   try {
     const products = await Product.find({})
-      .populate('owner', 'username email')
+      .populate('owner', 'name profilePic email')
       .sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {

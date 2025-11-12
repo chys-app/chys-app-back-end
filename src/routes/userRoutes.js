@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, getAllUsersBasic, updateUserProfile, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser, sendVerificationLink, verifyEmailLink, getVerificationStatus, resendVerificationEmail, blockUser, unblockUser, reportUser, getBlockedUsers, getReportedUsers } = require('../controllers/userController');
+const { register, login, getProfile, getAllUsersBasic, updateUserProfile, updateUserInfo, getUserNotifications, makeUserPremium, updateBankDetails, requestWithdraw, getTransactionHistory, resetPasswordAfterOTP, verifyResetOTP, sendResetOTP, toggleFollow, deleteAccount, sendVerificationOTP, verifyUser, sendVerificationLink, verifyEmailLink, getVerificationStatus, resendVerificationEmail, blockUser, unblockUser, reportUser, getBlockedUsers, getReportedUsers, getUserWithProducts } = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 const donationController = require('../controllers/donationController');
 
 router.post('/register', upload.single('profilePic'), register);
 router.post('/login', login);
+router.put('/update-user-info', auth, upload.single('profilePic'), updateUserInfo);
 router.post('/send-reset-otp', sendResetOTP);
 router.post('/verify-reset-otp', verifyResetOTP);
 router.post('/reset-password', resetPasswordAfterOTP);
@@ -24,6 +25,7 @@ router.get('/allUsers', auth, getAllUsersBasic)
 router.post('/follow-toggle/:userId', auth, toggleFollow);
 
 router.get('/profile/:userId?', auth, getProfile);
+router.get('/profile-with-products/:userId?', auth, getUserWithProducts);
 router.put('/profile', auth, upload.single('profilePic'), updateUserProfile);
 router.get('/notifications', auth, getUserNotifications);
 

@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const PetProfile = require('../models/PetProfile');
+const Product = require('../models/Product');
 const Notification = require('../models/Notification');
 const WithdrawRequest = require('../models/WithdrawRequest');
 const DonationTransaction = require('../models/DonationTransaction');
@@ -13,12 +14,11 @@ const Post = require('../models/Post');
 const Message = require('../models/Message');
 const Stroy = require('../models/Stroy');
 const sendEmail = require('../utils/sendEmail');
-const createFirebaseLink = require('../utils/createFirebaseLink');
 const UserReport = require('../models/UserReport');
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, lat, lng, fcmToken, bio, state } = req.body;
+    const { name, email, password, lat, lng, fcmToken, bio, state, contactName, phoneNumber, taxId } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -36,7 +36,10 @@ const register = async (req, res) => {
       fcmToken,
       bio,
       profilePic,
-      state
+      state,
+      contactName,
+      phoneNumber,
+      taxId
     });
 
     await user.save();
@@ -48,15 +51,14 @@ const register = async (req, res) => {
     await user.save();
 
     const backendVerifyUrl = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
-    const dynamicLink = await createFirebaseLink(backendVerifyUrl);
 
     await sendEmail({
       to: user.email,
       subject: 'Verify Your Email',
       html: `
         <p>Click the link below to verify your email:</p>
-        <p><a href="${dynamicLink}">${dynamicLink}</a></p>
-        <p>This link will open in the app (or fallback to browser) and will expire in 24 hours.</p>
+        <p><a href="${backendVerifyUrl}">${backendVerifyUrl}</a></p>
+        <p>This link will expire in 24 hours.</p>
       `
     });
 
@@ -228,7 +230,7 @@ const getProfile = async (req, res) => {
 };
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const { name, bio, address, country, city, zipCode, state } = req.body;
+  const { name, bio, address, country, city, zipCode, state, contactName, phoneNumber, website, taxId } = req.body;
 
   const user = await User.findById(req.user._id);
   if (!user) {
@@ -243,6 +245,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   if (city) user.city = city;
   if (zipCode) user.zipCode = zipCode;
   if (state) user.state = state;
+  if (contactName) user.contactName = contactName;
+  if (phoneNumber) user.phoneNumber = phoneNumber;
+  if (website) user.website = website;
+  if (taxId) user.taxId = taxId;
 
   // If a new profile picture is uploaded
   if (req.file?.path) {
@@ -263,7 +269,61 @@ const updateUserProfile = asyncHandler(async (req, res) => {
       city: user.city,
       country: user.country,
       state: user.state,
-      zipCode: user.zipCode
+      zipCode: user.zipCode,
+      website: user.website
+    }
+  });
+});
+
+const updateUserInfo = asyncHandler(async (req, res) => {
+  const { name, bio, address, country, city, zipCode, state, contactName, phoneNumber, website, taxId, role } = req.body;
+
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  // Update basic fields
+  if (name) user.name = name;
+  if (bio) user.bio = bio;
+  if (address) user.address = address;
+  if (country) user.country = country;
+  if (city) user.city = city;
+  if (zipCode) user.zipCode = zipCode;
+  if (state) user.state = state;
+  if (contactName) user.contactName = contactName;
+  if (phoneNumber) user.phoneNumber = phoneNumber;
+  if (website) user.website = website;
+  if (taxId) user.taxId = taxId;
+  if (role && ['user', 'biz-user', 'admin'].includes(role)) user.role = role;
+
+  // If a new profile picture is uploaded
+  if (req.file?.path) {
+    user.profilePic = req.file.path;
+  }
+
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'User information updated successfully',
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      bio: user.bio,
+      profilePic: user.profilePic,
+      address: user.address,
+      city: user.city,
+      country: user.country,
+      state: user.state,
+      zipCode: user.zipCode,
+      contactName: user.contactName,
+      phoneNumber: user.phoneNumber,
+      website: user.website,
+      taxId: user.taxId,
+      role: user.role,
+      isPremium: user.isPremium
     }
   });
 });
@@ -1057,6 +1117,55 @@ const getReportedUsers = asyncHandler(async (req, res) => {
   });
 });
 
+const getUserWithProducts = asyncHandler(async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+    const userId = req.params.userId || loggedInUserId;
+
+    const isOwnProfile = userId.toString() === loggedInUserId.toString();
+
+    // Get user profile without password
+    const user = await User.findById(userId)
+      .select('-password')
+      .populate('followers', '_id')  // Only get IDs for count
+      .populate('following', '_id');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get pet profiles only for regular users, not business users
+    let petProfiles = [];
+    if (user.role !== 'biz-user') {
+      petProfiles = await PetProfile.find({ user: userId });
+    }
+
+    // Get all products for this user
+    const products = await Product.find({ owner: userId }).sort({ createdAt: -1 });
+
+    // Determine if logged-in user is following the target user
+    let isFollowing = false;
+    if (!isOwnProfile) {
+      isFollowing = user.followers.some(f => f._id.toString() === loggedInUserId.toString());
+    }
+
+    res.json({
+      user: {
+        ...user.toObject(),
+        followerCount: user.followers.length,
+        followingCount: user.following.length,
+        isFollowing: isOwnProfile ? undefined : isFollowing,
+        isOwnProfile
+      },
+      petProfiles,
+      products
+    });
+  } catch (error) {
+    console.error("Error in getUserWithProducts:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 
 module.exports = {
   register,
@@ -1064,6 +1173,7 @@ module.exports = {
   getProfile,
   getAllUsersBasic,
   updateUserProfile,
+  updateUserInfo,
   getUserNotifications,
   toggleFavoritePost,
   getFavoritePosts,
@@ -1086,5 +1196,6 @@ module.exports = {
   unblockUser,
   reportUser,
   getBlockedUsers,
-  getReportedUsers
+  getReportedUsers,
+  getUserWithProducts
 }; 

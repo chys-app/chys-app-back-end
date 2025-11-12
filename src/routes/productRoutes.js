@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const { upload } = require('../config/cloudinary');
 
 router.post('/products', auth, upload.array('media', 5), createProduct);
-router.get('/products', auth, getProducts); // User's own products
+router.get('/products', auth, getProducts); // User's own products or by user id
 router.get('/products/public', getPublicProducts); // All products (public)
 router.get('/products/:productId', auth, getProductById);
 router.put('/products/:productId', auth, upload.array('media', 5), updateProduct);
