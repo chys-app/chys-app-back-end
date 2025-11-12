@@ -4,7 +4,7 @@ const { cloudinary } = require('../config/cloudinary');
 
 const createProduct = async (req, res) => {
   try {
-    const { type, name, description, url, price } = req.body;
+    const { type, name, description, url, price, discount } = req.body;
 
     console.log("createProduct is called");
 
@@ -22,6 +22,7 @@ const createProduct = async (req, res) => {
       description: description?.trim() || '',
       url: url?.trim(),
       price,
+      discount: discount || { percentage: 0, expirationDate: null },
       media: uploadedMedia,
       owner: req.user._id,
       ownerName: req.user.name
@@ -130,6 +131,10 @@ const updateProduct = async (req, res) => {
 
     if (price !== undefined) {
       product.price = price;
+    }
+
+    if (discount !== undefined) {
+      product.discount = discount;
     }
 
     await product.save();
