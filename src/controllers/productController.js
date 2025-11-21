@@ -22,7 +22,7 @@ const createProduct = async (req, res) => {
       description: description?.trim() || '',
       url: url?.trim(),
       price,
-      discount: discount || { percentage: 0, expirationDate: null },
+      discount: discount || 0,
       media: uploadedMedia,
       owner: req.user._id,
       ownerName: req.user.name
@@ -111,7 +111,7 @@ const updateProduct = async (req, res) => {
       product.media = req.files.map((file) => file.path);
     }
 
-    const { type, name, description, url, price } = req.body;
+    const { type, name, description, url, price, discount } = req.body;
 
     if (type) {
       product.type = type.toLowerCase();

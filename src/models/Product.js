@@ -39,16 +39,10 @@ const productSchema = new mongoose.Schema({
     min: 0
   },
   discount: {
-    percentage: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: 0
-    },
-    expirationDate: {
-      type: Date,
-      default: null
-    }
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
   },
   viewCount: { type: Number, default: 0 },
   viewedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

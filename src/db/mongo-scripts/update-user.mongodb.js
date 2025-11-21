@@ -4,18 +4,17 @@
 // The current database to use.
 use("test");
 
-// Delete all users created yesterday
-const yesterday = new Date();
-yesterday.setDate(yesterday.getDate() - 1);
-yesterday.setHours(0, 0, 0, 0);
+// Delete all products created today
 const today = new Date();
 today.setHours(0, 0, 0, 0);
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
 
-const result = db.getCollection("users").deleteMany({
+const result = db.getCollection("products").deleteMany({
   createdAt: {
-    $gte: yesterday,
-    $lt: today
+    $gte: today,
+    $lt: tomorrow
   }
 });
 
-print(`Deleted ${result.deletedCount} users created yesterday`);
+print(`Deleted ${result.deletedCount} products created today`);

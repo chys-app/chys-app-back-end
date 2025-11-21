@@ -50,7 +50,7 @@ const register = async (req, res) => {
     user.verificationTokenExpires = verificationTokenExpires;
     await user.save();
 
-    const backendVerifyUrl = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
+    const backendVerifyUrl = ` https://efe30193d9b5.ngrok-free.app/api/users/verify-email?token=${verificationToken}`;
 
     await sendEmail({
       to: user.email,
@@ -100,7 +100,7 @@ const login = async (req, res) => {
       await user.save();
 
       // Send verification email
-      const link = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
+      const link = `https://efe30193d9b5.ngrok-free.app/api/users/verify-email?token=${verificationToken}`;
       await sendEmail({
         to: user.email,
         subject: 'Verify Your Email',
@@ -856,7 +856,7 @@ const sendVerificationLink = asyncHandler(async (req, res) => {
   await user.save();
 
   // Construct verification link
-  const baseUrl = process.env.BACKEND_URL || 'https://pet-app-eta-ashy.vercel.app/api';
+  const baseUrl = process.env.BACKEND_URL || 'https://efe30193d9b5.ngrok-free.app/api';
   const link = `${baseUrl}/users/verify-email?token=${token}`;
 
   await sendEmail({
@@ -967,7 +967,7 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
   await user.save();
 
   // Send verification email
-  const link = `https://pet-app-eta-ashy.vercel.app/api/users/verify-email?token=${verificationToken}`;
+  const link = `https://efe30193d9b5.ngrok-free.app/api/users/verify-email?token=${verificationToken}`;
   await sendEmail({
     to: user.email,
     subject: 'Verify Your Email',
