@@ -38,6 +38,12 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  discount: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
   viewCount: { type: Number, default: 0 },
   viewedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   salesCount: { type: Number, default: 0 },
